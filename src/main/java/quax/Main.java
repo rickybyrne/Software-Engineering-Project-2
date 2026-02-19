@@ -3,18 +3,19 @@ package quax;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import quax.view.BoardView;
+import quax.controller.GameController;
+import quax.view.GameView;
 
 public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
+        GameController controller = new GameController();
+        GameView gameView = new GameView(controller);
 
-        BoardView boardView = new BoardView();
+        Scene scene = new Scene(gameView.getRoot(), 860, 680);
 
-        Scene scene = new Scene(boardView.getRoot(), 600, 600);
-
-        stage.setTitle("Quax Sprint 1");
+        stage.setTitle("Quax");
         stage.setScene(scene);
         stage.show();
     }
