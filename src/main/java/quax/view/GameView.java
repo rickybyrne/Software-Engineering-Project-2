@@ -36,6 +36,7 @@ public class GameView {
         this.turnLabel = new Label("Current turn: BLACK");
 
         buildLayout();
+        connectBoardClicks();
         showModeSelection();
     }
 
@@ -91,6 +92,12 @@ public class GameView {
         if (state.isGameOver() && state.getWinner() != null) {
             showWinner(state.getWinner());
         }
+    }
+
+    private void connectBoardClicks(){
+        boardView.setOnOctClicked(this::onOctClicked);
+        boardView.setOnRhombClicked(this::onRhombClicked);
+
     }
 
     public void onOctClicked(int r, int c) {

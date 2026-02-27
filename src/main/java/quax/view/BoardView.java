@@ -12,6 +12,7 @@ import quax.model.Board;
 import quax.model.GameState;
 import quax.model.PlayerColor;
 import quax.model.StrategyOverlay;
+import java.util.function.BiConsumer;
 
 public class BoardView {
 
@@ -278,6 +279,33 @@ public class BoardView {
         }
 
         return Color.WHITE;
+    }
+
+    public void setOnOctClicked(BiConsumer<Integer, Integer> onClick){
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                final int rr = r;
+                final int cc = c;
+                // create copies so each turn runs independently
+                octCells[rr][c].setOnMouseClicked(event -> {
+                    onClick.accept(rr, cc);
+                });
+
+
+            }
+        }
+    }
+
+    public void setOnRhombClicked(BiConsumer<Integer, Integer> onClick){
+        for (int r = 0; r < RHOMB_GRID_SIZE; r++) {
+            for (int c = 0; c < RHOMB_GRID_SIZE; c++) {
+                final int rr = r;
+                final int cc = c;
+                rhombCells[rr][c].setOnMouseClicked(event -> {
+                    onClick.accept(rr, cc);
+                });
+            }
+        }
     }
 
     public Pane getRoot() {
