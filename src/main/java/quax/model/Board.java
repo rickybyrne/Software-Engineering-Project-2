@@ -62,4 +62,7 @@ public class Board {
     public boolean isRhombInBounds(int r, int c) {
         return r >= 0 && r < 10 && c >= 0 && c < 10;
     }
+
+
+
 }

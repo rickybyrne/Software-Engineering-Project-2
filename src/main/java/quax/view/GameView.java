@@ -25,6 +25,7 @@ public class GameView {
     private final Label titleLabel;
     private final Label modeLabel;
     private final Label turnLabel;
+    private final Button pieRuleButton;
 
     public GameView(GameController controller) {
         this.controller = controller;
@@ -34,6 +35,7 @@ public class GameView {
         this.titleLabel = new Label("Quax");
         this.modeLabel = new Label("Mode: Not selected");
         this.turnLabel = new Label("Current turn: BLACK");
+        this.pieRuleButton = new Button("Activate Pie Rule (swap colours)");
 
         buildLayout();
         connectBoardClicks();
@@ -46,7 +48,14 @@ public class GameView {
         modeLabel.setFont(Font.font("Arial", 16));
         turnLabel.setFont(Font.font("Arial", 16));
 
-        VBox topPanel = new VBox(6, titleLabel, modeLabel, turnLabel);
+        pieRuleButton.setPrefWidth(240);
+        pieRuleButton.setOnAction(e -> onPieRuleClicked());
+
+        // Hide it by default (important for the mode selection screen)
+        pieRuleButton.setVisible(false);
+        pieRuleButton.setManaged(false);
+
+        VBox topPanel = new VBox(6, titleLabel, modeLabel, turnLabel, pieRuleButton);
         topPanel.setAlignment(Pos.CENTER);
         topPanel.setPadding(new Insets(16));
 
@@ -76,6 +85,10 @@ public class GameView {
         controller.newGame(mode);
         root.setCenter(boardView.getRoot());
         render(controller.getState());
+
+        pieRuleButton.setVisible(false);
+        pieRuleButton.setManaged(false);
+        pieRuleButton.setDisable(true);
     }
 
     public void render(GameState state) {
@@ -92,6 +105,18 @@ public class GameView {
         if (state.isGameOver() && state.getWinner() != null) {
             showWinner(state.getWinner());
         }
+
+        boolean canPie = controller.canActivatePieRule();
+
+        pieRuleButton.setVisible(canPie);
+        pieRuleButton.setManaged(canPie);
+        pieRuleButton.setDisable(!canPie);
+
+        if (state.isGameOver()) {
+            pieRuleButton.setVisible(false);
+            pieRuleButton.setManaged(false);
+        }
+
     }
 
     private void connectBoardClicks(){

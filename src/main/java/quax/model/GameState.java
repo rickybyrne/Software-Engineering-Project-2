@@ -24,7 +24,7 @@ public class GameState {
         PlayerKind whiteKind = mode == GameMode.HUMAN_V_BOT ? PlayerKind.BOT : PlayerKind.HUMAN;
         Player whitePlayer = new Player(PlayerColor.WHITE, whiteKind);
         this.players = new Player[]{blackPlayer, whitePlayer};
-    }
+    }//getter. gets cell at r c index, will be used in future
 
     public boolean isGameOver() {
         return gameOver;
