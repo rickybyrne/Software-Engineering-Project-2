@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -95,6 +96,54 @@ class GameViewIntegrationTest {
             int polygonCount = countAllPolygons(boardView.getRoot());
             // 11x11 octagons + 10x10 rhombs
             assertEquals(221, polygonCount);
+        });
+    }
+
+    @Test
+    void firstMoveUpdatesTurnLabelAndEnablesPieRuleButton() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (swap colours)");
+            assertNotNull(pieRuleButton);
+            assertFalse(pieRuleButton.isVisible());
+
+            view.onOctClicked(0, 0);
+
+            Label whiteTurn = findLabelByText(root, "Current turn: WHITE");
+            assertNotNull(whiteTurn);
+            assertTrue(pieRuleButton.isVisible());
+            assertFalse(pieRuleButton.isDisable());
+        });
+    }
+
+    @Test
+    void activatingPieRuleUpdatesTurnAndDisablesPieRuleOption() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            view.onOctClicked(0, 0);
+
+            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (swap colours)");
+            assertNotNull(pieRuleButton);
+            assertTrue(pieRuleButton.isVisible());
+
+            pieRuleButton.fire();
+
+            Label blackTurn = findLabelByText(root, "Current turn: BLACK");
+            assertNotNull(blackTurn);
+            assertFalse(pieRuleButton.isVisible());
+            assertTrue(pieRuleButton.isDisable());
         });
     }
 
