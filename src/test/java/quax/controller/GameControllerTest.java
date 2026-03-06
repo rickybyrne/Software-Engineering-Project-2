@@ -86,7 +86,23 @@ class GameControllerTest {
         assertTrue(controller.canActivatePieRule());
         assertTrue(controller.activatePieRule());
 
+        assertEquals(PlayerColor.WHITE, controller.getState().getBoard().getOct(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
         assertFalse(controller.canActivatePieRule());
         assertFalse(controller.activatePieRule());
+    }
+
+    @Test
+    void pieRuleRecoloursFirstRhombOpeningMove() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+
+        assertTrue(controller.handleRhombClick(0, 0));
+        assertTrue(controller.canActivatePieRule());
+
+        assertTrue(controller.activatePieRule());
+
+        assertEquals(PlayerColor.WHITE, controller.getState().getBoard().getRhomb(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
     }
 }

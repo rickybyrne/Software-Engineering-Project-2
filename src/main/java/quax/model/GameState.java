@@ -2,6 +2,20 @@ package quax.model;
 
 public class GameState {
 
+    private static final class OpeningMove {
+        private final CellType cellType;
+        private final int row;
+        private final int col;
+        private final PlayerColor originalColor;
+
+        private OpeningMove(CellType cellType, int row, int col, PlayerColor originalColor) {
+            this.cellType = cellType;
+            this.row = row;
+            this.col = col;
+            this.originalColor = originalColor;
+        }
+    }
+
     private PlayerColor currentTurn;
     private boolean gameOver;
     private PlayerColor winner;
@@ -10,6 +24,7 @@ public class GameState {
     private int moveCount;
     private final Board board;
     private final Player[] players;
+    private OpeningMove openingMove;
 
     public GameState(GameMode mode) {
         this.mode = mode;
@@ -19,6 +34,7 @@ public class GameState {
         this.winner = null;
         this.pieRuleAvailable = true;
         this.moveCount = 0;
+        this.openingMove = null;
 
         Player blackPlayer = new Player(PlayerColor.BLACK, PlayerKind.HUMAN);
         PlayerKind whiteKind = mode == GameMode.HUMAN_V_BOT ? PlayerKind.BOT : PlayerKind.HUMAN;
@@ -37,6 +53,15 @@ public class GameState {
     public void apply(Move move) {
         if (move == null || gameOver) {
             return;
+        }
+
+        if (moveCount == 0) {
+            openingMove = new OpeningMove(
+                    move.getCellType(),
+                    move.getR(),
+                    move.getC(),
+                    move.getPlayer()
+            );
         }
 
         if (move.isStoneMove()) {
@@ -80,6 +105,26 @@ public class GameState {
         }
 
         toggleTurn();
+        swapOpeningPieceOnBoard();
+    }
+
+    private void swapOpeningPieceOnBoard() {
+        if (openingMove == null) {
+            return;
+        }
+
+        PlayerColor swappedColor = openingMove.originalColor == PlayerColor.BLACK
+                ? PlayerColor.WHITE
+                : PlayerColor.BLACK;
+
+        if (openingMove.cellType == CellType.OCT) {
+            board.placeStone(openingMove.row, openingMove.col, swappedColor);
+            return;
+        }
+
+        if (openingMove.cellType == CellType.RHOMB) {
+            board.placeTile(openingMove.row, openingMove.col, swappedColor);
+        }
     }
 
     private Player findPlayer(PlayerColor color) {

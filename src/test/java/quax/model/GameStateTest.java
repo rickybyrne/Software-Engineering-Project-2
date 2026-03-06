@@ -72,8 +72,23 @@ class GameStateTest {
 
         assertEquals(blackBeforeSwap, whiteAfterSwap);
         assertEquals(whiteBeforeSwap, blackAfterSwap);
+        assertEquals(PlayerColor.WHITE, state.getBoard().getOct(0, 0).getOccupant());
         assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
         assertFalse(state.canUsePieRule());
+        assertFalse(state.isPieRuleAvailable());
+    }
+
+    @Test
+    void swapPlayerColoursRecoloursFirstRhombMove() {
+        GameState state = new GameState(GameMode.HUMAN_V_HUMAN);
+
+        state.apply(new Move(CellType.RHOMB, 0, 0, PlayerColor.BLACK));
+
+        state.swapPlayerColours();
+        state.disablePieRule();
+
+        assertEquals(PlayerColor.WHITE, state.getBoard().getRhomb(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
         assertFalse(state.isPieRuleAvailable());
     }
 
