@@ -26,6 +26,9 @@ public class GameView {
     private final Label modeLabel;
     private final Label turnLabel;
     private final Button pieRuleButton;
+    private boolean winnerShown;
+    private static final Font STATUS_FONT = Font.font("Arial", 16);
+    private static final Font WINNER_FONT = Font.font("Arial", FontWeight.EXTRA_BOLD, 28);
 
     public GameView(GameController controller) {
         this.controller = controller;
@@ -36,6 +39,7 @@ public class GameView {
         this.modeLabel = new Label("Mode: Not selected");
         this.turnLabel = new Label("Current turn: BLACK");
         this.pieRuleButton = new Button("Activate Pie Rule (swap colours)");
+        this.winnerShown = false;
 
         buildLayout();
         connectBoardClicks();
@@ -45,8 +49,8 @@ public class GameView {
     private void buildLayout() {
 
         titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 34));
-        modeLabel.setFont(Font.font("Arial", 16));
-        turnLabel.setFont(Font.font("Arial", 16));
+        modeLabel.setFont(STATUS_FONT);
+        turnLabel.setFont(STATUS_FONT);
 
         pieRuleButton.setPrefWidth(240);
         pieRuleButton.setOnAction(e -> onPieRuleClicked());
@@ -83,6 +87,7 @@ public class GameView {
 
     private void startGame(GameMode mode) {
         controller.newGame(mode);
+        winnerShown = false;
         root.setCenter(boardView.getRoot());
         render(controller.getState());
 
@@ -100,9 +105,13 @@ public class GameView {
         boardView.updateFrom(state);
 
         modeLabel.setText("Mode: " + asReadableMode(state.getMode()));
-        turnLabel.setText("Current turn: " + state.getCurrentTurn());
+        turnLabel.setText(state.isGameOver()
+                ? "Winner: " + state.getWinner()
+                : "Current turn: " + state.getCurrentTurn());
+        turnLabel.setFont(state.isGameOver() ? WINNER_FONT : STATUS_FONT);
 
-        if (state.isGameOver() && state.getWinner() != null) {
+        if (state.isGameOver() && state.getWinner() != null && !winnerShown) {
+            winnerShown = true;
             showWinner(state.getWinner());
         }
 
@@ -143,21 +152,12 @@ public class GameView {
         }
     }
 
-    public void onShowStrategy() {
-        controller.toggleStrategyOverlay(true);
-    }
-
-    public void onHideStrategy() {
-        controller.toggleStrategyOverlay(false);
-        boardView.clearStrategyOverlay();
-    }
-
     public void showWinner(PlayerColor winner) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Game Finished");
         alert.setHeaderText(null);
-        alert.setContentText("Winner: " + winner);
-        alert.showAndWait();
+        alert.setContentText(winner + " wins!");
+        alert.show();
     }
 
     private String asReadableMode(GameMode mode) {

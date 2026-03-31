@@ -147,6 +147,27 @@ class GameViewIntegrationTest {
         });
     }
 
+    @Test
+    void winningMoveUpdatesTurnLabelToWinnerMessage() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            for (int row = 0; row < 10; row++) {
+                view.onOctClicked(row, 0);
+                view.onOctClicked(row, 1);
+            }
+            view.onOctClicked(10, 0);
+
+            Label winnerLabel = findLabelByText(root, "Winner: BLACK");
+            assertNotNull(winnerLabel);
+        });
+    }
+
     private Label findLabelByText(Parent root, String text) {
         List<Label> labels = findAll(root, Label.class);
         for (Label label : labels) {

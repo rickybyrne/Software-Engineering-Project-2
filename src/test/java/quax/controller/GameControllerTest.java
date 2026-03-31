@@ -8,6 +8,7 @@ import quax.model.PlayerColor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GameControllerTest {
@@ -104,5 +105,58 @@ class GameControllerTest {
 
         assertEquals(PlayerColor.WHITE, controller.getState().getBoard().getRhomb(0, 0).getOccupant());
         assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+    }
+
+    @Test
+    void blackWinsWithConnectedTopToBottomStoneChain() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+
+        assertTrue(controller.handleOctClick(0, 0));
+        assertTrue(controller.handleOctClick(0, 1));
+        assertTrue(controller.handleOctClick(1, 0));
+        assertTrue(controller.handleOctClick(1, 1));
+        assertTrue(controller.handleOctClick(2, 0));
+        assertTrue(controller.handleOctClick(2, 1));
+        assertTrue(controller.handleOctClick(3, 0));
+        assertTrue(controller.handleOctClick(3, 1));
+        assertTrue(controller.handleOctClick(4, 0));
+        assertTrue(controller.handleOctClick(4, 1));
+        assertTrue(controller.handleOctClick(5, 0));
+        assertTrue(controller.handleOctClick(5, 1));
+        assertTrue(controller.handleOctClick(6, 0));
+        assertTrue(controller.handleOctClick(6, 1));
+        assertTrue(controller.handleOctClick(7, 0));
+        assertTrue(controller.handleOctClick(7, 1));
+        assertTrue(controller.handleOctClick(8, 0));
+        assertTrue(controller.handleOctClick(8, 1));
+        assertTrue(controller.handleOctClick(9, 0));
+        assertTrue(controller.handleOctClick(9, 1));
+        assertTrue(controller.handleOctClick(10, 0));
+
+        GameState state = controller.getState();
+        assertTrue(state.isGameOver());
+        assertEquals(PlayerColor.BLACK, state.getWinner());
+    }
+
+    @Test
+    void movesAreRejectedAfterWinnerIsDetected() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+
+        for (int row = 0; row < 10; row++) {
+            assertTrue(controller.handleOctClick(row, 0));
+            assertTrue(controller.handleOctClick(row, 1));
+        }
+        assertTrue(controller.handleOctClick(10, 0));
+
+        GameState state = controller.getState();
+        assertTrue(state.isGameOver());
+        assertEquals(PlayerColor.BLACK, state.getWinner());
+
+        boolean moveAcceptedAfterWin = controller.handleOctClick(10, 1);
+
+        assertFalse(moveAcceptedAfterWin);
+        assertNull(state.getBoard().getOct(10, 1).getOccupant());
     }
 }
