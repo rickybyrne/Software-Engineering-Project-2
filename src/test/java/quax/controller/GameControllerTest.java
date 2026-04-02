@@ -1,15 +1,15 @@
 package quax.controller;
 
-import org.junit.jupiter.api.Test;
-import quax.model.GameMode;
-import quax.model.GameState;
-import quax.model.PlayerColor;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
+import quax.model.GameMode;
+import quax.model.GameState;
+import quax.model.PlayerColor;
 
 class GameControllerTest {
 
@@ -158,5 +158,68 @@ class GameControllerTest {
 
         assertFalse(moveAcceptedAfterWin);
         assertNull(state.getBoard().getOct(10, 1).getOccupant());
+    }
+
+    @Test
+    void devModeRightClickCyclesOctTileWithoutChangingTurn() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+
+        assertFalse(controller.handleOctRightClick(0, 0));
+        assertNull(controller.getState().getBoard().getOct(0, 0).getOccupant());
+
+        assertTrue(controller.toggleDevMode());
+
+        assertTrue(controller.handleOctRightClick(0, 0));
+        assertEquals(PlayerColor.WHITE, controller.getState().getBoard().getOct(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+        assertEquals(0, controller.getState().getMoveCount());
+
+        assertTrue(controller.handleOctRightClick(0, 0));
+        assertEquals(PlayerColor.BLACK, controller.getState().getBoard().getOct(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+        assertEquals(0, controller.getState().getMoveCount());
+
+        assertTrue(controller.handleOctRightClick(0, 0));
+        assertNull(controller.getState().getBoard().getOct(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+        assertEquals(0, controller.getState().getMoveCount());
+    }
+
+    @Test
+    void devModeRightClickCyclesRhombTileWithoutChangingTurn() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+
+        assertTrue(controller.toggleDevMode());
+
+        assertTrue(controller.handleRhombRightClick(0, 0));
+        assertEquals(PlayerColor.WHITE, controller.getState().getBoard().getRhomb(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+        assertEquals(0, controller.getState().getMoveCount());
+
+        assertTrue(controller.handleRhombRightClick(0, 0));
+        assertEquals(PlayerColor.BLACK, controller.getState().getBoard().getRhomb(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+        assertEquals(0, controller.getState().getMoveCount());
+
+        assertTrue(controller.handleRhombRightClick(0, 0));
+        assertNull(controller.getState().getBoard().getRhomb(0, 0).getOccupant());
+        assertEquals(PlayerColor.BLACK, controller.getState().getCurrentTurn());
+        assertEquals(0, controller.getState().getMoveCount());
+    }
+
+    @Test
+    void newGameResetsDevModeToDisabled() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+
+        assertTrue(controller.toggleDevMode());
+        assertTrue(controller.isDevModeEnabled());
+
+        controller.newGame(GameMode.HUMAN_V_BOT);
+
+        assertFalse(controller.isDevModeEnabled());
+        assertFalse(controller.handleOctRightClick(0, 0));
     }
 }

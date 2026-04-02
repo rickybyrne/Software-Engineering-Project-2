@@ -14,11 +14,13 @@ public class GameController {
     private GameState state;
     private final MoveValidator validator;
     private final WinDetector winDetector;
+    private final DevModeEditor devModeEditor;
     private BotEngine botEngine;
 
     public GameController() {
         this.validator = new MoveValidator();
         this.winDetector = new WinDetector();
+        this.devModeEditor = new DevModeEditor();
     }
 
     public boolean canActivatePieRule() {
@@ -37,6 +39,7 @@ public class GameController {
 
     public void newGame(GameMode mode) {
         state = new GameState(mode);
+        devModeEditor.disable();
 
         if (mode == GameMode.HUMAN_V_BOT) {
             botEngine = new BotEngine(null, false);
@@ -61,6 +64,44 @@ public class GameController {
 
         Move move = new Move(CellType.RHOMB, r, c, state.getCurrentTurn());
         return handleMove(move);
+    }
+
+    public boolean handleOctRightClick(int r, int c) {
+        return handleDevEdit(CellType.OCT, r, c);
+    }
+
+    public boolean handleRhombRightClick(int r, int c) {
+        return handleDevEdit(CellType.RHOMB, r, c);
+    }
+
+    private boolean handleDevEdit(CellType cellType, int r, int c) {
+        if (state == null || !devModeEditor.isEnabled()) {
+            return false;
+        }
+
+        if (cellType == CellType.OCT) {
+            if (!state.getBoard().isOctInBounds(r, c)) {
+                return false;
+            }
+
+            PlayerColor current = state.getBoard().getOct(r, c).getOccupant();
+            PlayerColor next = devModeEditor.nextOccupant(current);
+            state.getBoard().placeStone(r, c, next);
+            return true;
+        }
+
+        if (cellType == CellType.RHOMB) {
+            if (!state.getBoard().isRhombInBounds(r, c)) {
+                return false;
+            }
+
+            PlayerColor current = state.getBoard().getRhomb(r, c).getOccupant();
+            PlayerColor next = devModeEditor.nextOccupant(current);
+            state.getBoard().placeTile(r, c, next);
+            return true;
+        }
+
+        return false;
     }
 
     private boolean handleMove(Move move) {
@@ -92,5 +133,13 @@ public class GameController {
 
     public GameState getState() {
         return state;
+    }
+
+    public boolean toggleDevMode() {
+        return devModeEditor.toggle();
+    }
+
+    public boolean isDevModeEnabled() {
+        return devModeEditor.isEnabled();
     }
 }

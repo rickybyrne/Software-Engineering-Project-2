@@ -1,13 +1,5 @@
 package quax.view;
 
-import javafx.scene.Parent;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import quax.controller.GameController;
-import quax.testutil.FxTestHelper;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import quax.controller.GameController;
+import quax.testutil.FxTestHelper;
 
 class GameViewIntegrationTest {
 
@@ -32,10 +35,12 @@ class GameViewIntegrationTest {
             Label title = findLabelByText(root, "Quax");
             Label prompt = findLabelByText(root, "Select game mode");
             Label turn = findLabelByText(root, "Current turn: BLACK");
+            Label devMode = findLabelByText(root, "DevMode: ON");
 
             assertNotNull(title);
             assertNotNull(prompt);
             assertNotNull(turn);
+            assertTrue(devMode == null || !devMode.isVisible());
         });
     }
 
@@ -165,6 +170,49 @@ class GameViewIntegrationTest {
 
             Label winnerLabel = findLabelByText(root, "Winner: BLACK");
             assertNotNull(winnerLabel);
+        });
+    }
+
+    @Test
+    void devModeKeybindTogglesLabelAndRightClickHandlersRespectTurn() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+            Scene scene = new Scene(root, 860, 680);
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            Label devModeOff = findLabelByText(root, "DevMode: ON");
+            assertTrue(devModeOff == null || !devModeOff.isVisible());
+
+            view.onOctRightClicked(0, 0);
+            Label stillBlackTurn = findLabelByText(root, "Current turn: BLACK");
+            assertNotNull(stillBlackTurn);
+
+            scene.getOnKeyPressed().handle(new KeyEvent(
+                    KeyEvent.KEY_PRESSED,
+                    "d",
+                    "d",
+                    KeyCode.D,
+                    false,
+                    false,
+                    false,
+                    false
+            ));
+
+            Label devModeOn = findLabelByText(root, "DevMode: ON");
+            assertNotNull(devModeOn);
+            assertTrue(devModeOn.isVisible());
+
+            view.onOctRightClicked(0, 0);
+            Label blackTurnAfterEdit = findLabelByText(root, "Current turn: BLACK");
+            assertNotNull(blackTurnAfterEdit);
+
+            view.onOctClicked(0, 1);
+            Label whiteTurn = findLabelByText(root, "Current turn: WHITE");
+            assertNotNull(whiteTurn);
         });
     }
 

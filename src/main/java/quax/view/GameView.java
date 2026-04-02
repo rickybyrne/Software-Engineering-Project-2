@@ -3,9 +3,11 @@ package quax.view;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
@@ -25,6 +27,7 @@ public class GameView {
     private final Label titleLabel;
     private final Label modeLabel;
     private final Label turnLabel;
+    private final Label devModeLabel;
     private final Button pieRuleButton;
     private boolean winnerShown;
     private static final Font STATUS_FONT = Font.font("Arial", 16);
@@ -38,6 +41,7 @@ public class GameView {
         this.titleLabel = new Label("Quax");
         this.modeLabel = new Label("Mode: Not selected");
         this.turnLabel = new Label("Current turn: BLACK");
+        this.devModeLabel = new Label("DevMode: ON");
         this.pieRuleButton = new Button("Activate Pie Rule (swap colours)");
         this.winnerShown = false;
 
@@ -51,6 +55,7 @@ public class GameView {
         titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 34));
         modeLabel.setFont(STATUS_FONT);
         turnLabel.setFont(STATUS_FONT);
+        devModeLabel.setFont(STATUS_FONT);
 
         pieRuleButton.setPrefWidth(240);
         pieRuleButton.setOnAction(e -> onPieRuleClicked());
@@ -58,12 +63,33 @@ public class GameView {
         // Hide it by default (important for the mode selection screen)
         pieRuleButton.setVisible(false);
         pieRuleButton.setManaged(false);
+        devModeLabel.setVisible(false);
+        devModeLabel.setManaged(false);
 
-        VBox topPanel = new VBox(6, titleLabel, modeLabel, turnLabel, pieRuleButton);
+        VBox topPanel = new VBox(6, titleLabel, modeLabel, turnLabel, devModeLabel, pieRuleButton);
         topPanel.setAlignment(Pos.CENTER);
         topPanel.setPadding(new Insets(16));
 
         root.setTop(topPanel);
+        updateDevModeLabel();
+
+        root.sceneProperty().addListener((obs, oldScene, newScene) -> installDevModeKeybind(newScene));
+        if (root.getScene() != null) {
+            installDevModeKeybind(root.getScene());
+        }
+    }
+
+    private void installDevModeKeybind(Scene scene) {
+        if (scene == null) {
+            return;
+        }
+
+        scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.D) {
+                controller.toggleDevMode();
+                updateDevModeLabel();
+            }
+        });
     }
 
     private void showModeSelection() {
@@ -88,6 +114,7 @@ public class GameView {
     private void startGame(GameMode mode) {
         controller.newGame(mode);
         winnerShown = false;
+        updateDevModeLabel();
         root.setCenter(boardView.getRoot());
         render(controller.getState());
 
@@ -129,8 +156,8 @@ public class GameView {
     }
 
     private void connectBoardClicks(){
-        boardView.setOnOctClicked(this::onOctClicked);
-        boardView.setOnRhombClicked(this::onRhombClicked);
+        boardView.setOnOctClicked(this::onOctClicked, this::onOctRightClicked);
+        boardView.setOnRhombClicked(this::onRhombClicked, this::onRhombRightClicked);
 
     }
 
@@ -142,6 +169,18 @@ public class GameView {
 
     public void onRhombClicked(int r, int c) {
         if (controller.handleRhombClick(r, c)) {
+            render(controller.getState());
+        }
+    }
+
+    public void onOctRightClicked(int r, int c) {
+        if (controller.handleOctRightClick(r, c)) {
+            render(controller.getState());
+        }
+    }
+
+    public void onRhombRightClicked(int r, int c) {
+        if (controller.handleRhombRightClick(r, c)) {
             render(controller.getState());
         }
     }
@@ -165,6 +204,13 @@ public class GameView {
             return "Human vs Bot";
         }
         return "Human vs Human";
+    }
+
+    private void updateDevModeLabel() {
+        boolean devModeEnabled = controller.isDevModeEnabled();
+        devModeLabel.setVisible(devModeEnabled);
+        devModeLabel.setManaged(devModeEnabled);
+        devModeLabel.setText(devModeEnabled ? "DevMode: ON" : "");
     }
 
     public Parent getRoot() {

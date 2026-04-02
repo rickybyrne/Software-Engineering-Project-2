@@ -1,6 +1,9 @@
 package quax.view;
 
+import java.util.function.BiConsumer;
+
 import javafx.scene.Group;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polygon;
@@ -12,7 +15,6 @@ import quax.model.Board;
 import quax.model.GameState;
 import quax.model.PlayerColor;
 import quax.model.StrategyOverlay;
-import java.util.function.BiConsumer;
 
 public class BoardView {
 
@@ -281,28 +283,57 @@ public class BoardView {
         return Color.WHITE;
     }
 
-    public void setOnOctClicked(BiConsumer<Integer, Integer> onClick){
+    public void setOnOctClicked(BiConsumer<Integer, Integer> onClick) {
+        setOnOctClicked(onClick, null);
+    }
+
+    public void setOnOctClicked(
+            BiConsumer<Integer, Integer> onLeftClick,
+            BiConsumer<Integer, Integer> onRightClick
+    ) {
         for (int r = 0; r < BOARD_SIZE; r++) {
             for (int c = 0; c < BOARD_SIZE; c++) {
                 final int rr = r;
                 final int cc = c;
-                // create copies so each turn runs independently
-                octCells[rr][c].setOnMouseClicked(event -> {
-                    onClick.accept(rr, cc);
+                octCells[rr][cc].setOnMouseClicked(event -> {
+                    if (event.getButton() == MouseButton.SECONDARY) {
+                        if (onRightClick != null) {
+                            onRightClick.accept(rr, cc);
+                        }
+                        return;
+                    }
+
+                    if (event.getButton() == MouseButton.PRIMARY && onLeftClick != null) {
+                        onLeftClick.accept(rr, cc);
+                    }
                 });
-
-
             }
         }
     }
 
-    public void setOnRhombClicked(BiConsumer<Integer, Integer> onClick){
+    public void setOnRhombClicked(BiConsumer<Integer, Integer> onClick) {
+        setOnRhombClicked(onClick, null);
+    }
+
+    public void setOnRhombClicked(
+            BiConsumer<Integer, Integer> onLeftClick,
+            BiConsumer<Integer, Integer> onRightClick
+    ) {
         for (int r = 0; r < RHOMB_GRID_SIZE; r++) {
             for (int c = 0; c < RHOMB_GRID_SIZE; c++) {
                 final int rr = r;
                 final int cc = c;
-                rhombCells[rr][c].setOnMouseClicked(event -> {
-                    onClick.accept(rr, cc);
+                rhombCells[rr][cc].setOnMouseClicked(event -> {
+                    if (event.getButton() == MouseButton.SECONDARY) {
+                        if (onRightClick != null) {
+                            onRightClick.accept(rr, cc);
+                        }
+                        return;
+                    }
+
+                    if (event.getButton() == MouseButton.PRIMARY && onLeftClick != null) {
+                        onLeftClick.accept(rr, cc);
+                    }
                 });
             }
         }
