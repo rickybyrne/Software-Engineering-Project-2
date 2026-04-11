@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GameStateTest {
@@ -24,19 +25,17 @@ class GameStateTest {
     }
 
     @Test
-    void humanVsBotSetsWhitePlayerAsBot() {
+    void humanVsBotSetsBlackPlayerAsBotAndWhitePlayerAsHuman() {
         GameState state = new GameState(GameMode.HUMAN_V_BOT);
 
-        Player whitePlayer = null;
-        for (Player player : state.getPlayers()) {
-            if (player.getColor() == PlayerColor.WHITE) {
-                whitePlayer = player;
-                break;
-            }
-        }
+        Player blackPlayer = state.getPlayerForColor(PlayerColor.BLACK);
+        Player whitePlayer = state.getPlayerForColor(PlayerColor.WHITE);
 
+        assertNotNull(blackPlayer);
         assertNotNull(whitePlayer);
-        assertEquals(PlayerKind.BOT, whitePlayer.getKind());
+        assertEquals(PlayerKind.BOT, blackPlayer.getKind());
+        assertEquals(PlayerKind.HUMAN, whitePlayer.getKind());
+        assertTrue(state.isCurrentTurnBot());
     }
 
     @Test
@@ -53,25 +52,21 @@ class GameStateTest {
     }
 
     @Test
-    void swapPlayerColoursSwapsPlayerColorsAndTurn() {
+    void claimOpeningMoveForWhiteRecoloursOpeningOctWithoutSwappingPlayers() {
         GameState state = new GameState(GameMode.HUMAN_V_HUMAN);
 
         state.apply(new Move(CellType.OCT, 0, 0, PlayerColor.BLACK));
 
-        Player blackBeforeSwap = findPlayerByColor(state, PlayerColor.BLACK);
-        Player whiteBeforeSwap = findPlayerByColor(state, PlayerColor.WHITE);
+        Player blackPlayer = state.getPlayerForColor(PlayerColor.BLACK);
+        Player whitePlayer = state.getPlayerForColor(PlayerColor.WHITE);
 
-        assertNotNull(blackBeforeSwap);
-        assertNotNull(whiteBeforeSwap);
+        assertNotNull(blackPlayer);
+        assertNotNull(whitePlayer);
 
-        state.swapPlayerColours();
-        state.disablePieRule();
+        state.claimOpeningMoveForWhite();
 
-        Player blackAfterSwap = findPlayerByColor(state, PlayerColor.BLACK);
-        Player whiteAfterSwap = findPlayerByColor(state, PlayerColor.WHITE);
-
-        assertEquals(blackBeforeSwap, whiteAfterSwap);
-        assertEquals(whiteBeforeSwap, blackAfterSwap);
+        assertSame(blackPlayer, state.getPlayerForColor(PlayerColor.BLACK));
+        assertSame(whitePlayer, state.getPlayerForColor(PlayerColor.WHITE));
         assertEquals(PlayerColor.WHITE, state.getBoard().getOct(0, 0).getOccupant());
         assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
         assertFalse(state.canUsePieRule());
@@ -79,25 +74,15 @@ class GameStateTest {
     }
 
     @Test
-    void swapPlayerColoursRecoloursFirstRhombMove() {
+    void claimOpeningMoveForWhiteRecoloursOpeningRhombWithoutSwappingPlayers() {
         GameState state = new GameState(GameMode.HUMAN_V_HUMAN);
 
         state.apply(new Move(CellType.RHOMB, 0, 0, PlayerColor.BLACK));
 
-        state.swapPlayerColours();
-        state.disablePieRule();
+        state.claimOpeningMoveForWhite();
 
         assertEquals(PlayerColor.WHITE, state.getBoard().getRhomb(0, 0).getOccupant());
         assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
         assertFalse(state.isPieRuleAvailable());
-    }
-
-    private Player findPlayerByColor(GameState state, PlayerColor color) {
-        for (Player player : state.getPlayers()) {
-            if (player.getColor() == color) {
-                return player;
-            }
-        }
-        return null;
     }
 }

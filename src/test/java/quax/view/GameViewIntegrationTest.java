@@ -70,10 +70,13 @@ class GameViewIntegrationTest {
             hvb.fire();
 
             Label modeLabel = findLabelByText(root, "Mode: Human vs Bot");
-            Label turnLabel = findLabelByText(root, "Current turn: BLACK");
+            Label turnLabel = findLabelByText(root, "Current turn: WHITE");
+            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (claim opening move)");
 
             assertNotNull(modeLabel);
             assertNotNull(turnLabel);
+            assertNotNull(pieRuleButton);
+            assertTrue(pieRuleButton.isVisible());
         });
     }
 
@@ -114,7 +117,7 @@ class GameViewIntegrationTest {
             assertNotNull(hvh);
             hvh.fire();
 
-            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (swap colours)");
+            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (claim opening move)");
             assertNotNull(pieRuleButton);
             assertFalse(pieRuleButton.isVisible());
 
@@ -139,7 +142,7 @@ class GameViewIntegrationTest {
 
             view.onOctClicked(0, 0);
 
-            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (swap colours)");
+            Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (claim opening move)");
             assertNotNull(pieRuleButton);
             assertTrue(pieRuleButton.isVisible());
 

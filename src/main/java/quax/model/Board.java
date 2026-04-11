@@ -19,6 +19,26 @@ public class Board {
         }
     }
 
+    public Board(Board other) {
+        this();
+
+        for (int r = 0; r < octCells.length; r++) {
+            for (int c = 0; c < octCells[r].length; c++) {
+                octCells[r][c].setOccupant(other.getOct(r, c).getOccupant());
+            }
+        }
+
+        for (int r = 0; r < rhombCells.length; r++) {
+            for (int c = 0; c < rhombCells[r].length; c++) {
+                rhombCells[r][c].setOccupant(other.getRhomb(r, c).getOccupant());
+            }
+        }
+    }
+
+    public Board copy() {
+        return new Board(this);
+    }
+
     public boolean isOctEmpty(int r, int c) {
         if (!isOctInBounds(r, c)) {
             return false;

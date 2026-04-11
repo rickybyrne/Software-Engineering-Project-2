@@ -4,6 +4,7 @@ import quax.model.BotEngine;
 import quax.model.CellType;
 import quax.model.GameMode;
 import quax.model.GameState;
+import quax.model.ModuleBotStrategy;
 import quax.model.Move;
 import quax.model.MoveValidator;
 import quax.model.PlayerColor;
@@ -32,8 +33,8 @@ public class GameController {
             return false;
         }
 
-        state.swapPlayerColours();
-        state.disablePieRule();
+        state.claimOpeningMoveForWhite();
+        applyBotMoveIfNeeded();
         return true;
     }
 
@@ -42,7 +43,8 @@ public class GameController {
         devModeEditor.disable();
 
         if (mode == GameMode.HUMAN_V_BOT) {
-            botEngine = new BotEngine(null, false);
+            botEngine = new BotEngine(new ModuleBotStrategy(), false);
+            applyBotMoveIfNeeded();
         } else {
             botEngine = null;
         }
@@ -53,12 +55,20 @@ public class GameController {
             return false;
         }
 
+        if (state.isCurrentTurnBot()) {
+            return false;
+        }
+
         Move move = new Move(CellType.OCT, r, c, state.getCurrentTurn());
         return handleMove(move);
     }
 
     public boolean handleRhombClick(int r, int c) {
         if (state == null) {
+            return false;
+        }
+
+        if (state.isCurrentTurnBot()) {
             return false;
         }
 
@@ -114,6 +124,28 @@ public class GameController {
         }
 
         state.apply(move);
+
+        PlayerColor winner = winDetector.checkWinner(state.getBoard());
+        if (winner != null) {
+            state.endGame(winner);
+        }
+
+        applyBotMoveIfNeeded();
+
+        return true;
+    }
+
+    private boolean applyBotMoveIfNeeded() {
+        if (state == null || state.isGameOver() || botEngine == null || !state.isCurrentTurnBot()) {
+            return false;
+        }
+
+        Move botMove = botEngine.chooseMove(state);
+        if (!validator.validate(botMove, state)) {
+            return false;
+        }
+
+        state.apply(botMove);
 
         PlayerColor winner = winDetector.checkWinner(state.getBoard());
         if (winner != null) {

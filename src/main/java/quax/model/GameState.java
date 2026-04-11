@@ -6,13 +6,11 @@ public class GameState {
         private final CellType cellType;
         private final int row;
         private final int col;
-        private final PlayerColor originalColor;
 
-        private OpeningMove(CellType cellType, int row, int col, PlayerColor originalColor) {
+        private OpeningMove(CellType cellType, int row, int col) {
             this.cellType = cellType;
             this.row = row;
             this.col = col;
-            this.originalColor = originalColor;
         }
     }
 
@@ -36,9 +34,9 @@ public class GameState {
         this.moveCount = 0;
         this.openingMove = null;
 
-        Player blackPlayer = new Player(PlayerColor.BLACK, PlayerKind.HUMAN);
-        PlayerKind whiteKind = mode == GameMode.HUMAN_V_BOT ? PlayerKind.BOT : PlayerKind.HUMAN;
-        Player whitePlayer = new Player(PlayerColor.WHITE, whiteKind);
+        PlayerKind blackKind = mode == GameMode.HUMAN_V_BOT ? PlayerKind.BOT : PlayerKind.HUMAN;
+        Player blackPlayer = new Player(PlayerColor.BLACK, blackKind);
+        Player whitePlayer = new Player(PlayerColor.WHITE, PlayerKind.HUMAN);
         this.players = new Player[]{blackPlayer, whitePlayer};
     }//getter. gets cell at r c index, will be used in future
 
@@ -59,8 +57,7 @@ public class GameState {
             openingMove = new OpeningMove(
                     move.getCellType(),
                     move.getR(),
-                    move.getC(),
-                    move.getPlayer()
+                    move.getC()
             );
         }
 
@@ -92,42 +89,28 @@ public class GameState {
         this.pieRuleAvailable = false;
     }
 
-    public void swapPlayerColours() {
-        Player blackPlayer = findPlayer(PlayerColor.BLACK);
-        Player whitePlayer = findPlayer(PlayerColor.WHITE);
-
-        if (blackPlayer != null) {
-            blackPlayer.setColor(PlayerColor.WHITE);
-        }
-
-        if (whitePlayer != null) {
-            whitePlayer.setColor(PlayerColor.BLACK);
-        }
-
-        toggleTurn();
-        swapOpeningPieceOnBoard();
-    }
-
-    private void swapOpeningPieceOnBoard() {
-        if (openingMove == null) {
+    public void claimOpeningMoveForWhite() {
+        if (!canUsePieRule() || openingMove == null) {
             return;
         }
 
-        PlayerColor swappedColor = openingMove.originalColor == PlayerColor.BLACK
-                ? PlayerColor.WHITE
-                : PlayerColor.BLACK;
+        recolourOpeningPiece(PlayerColor.WHITE);
+        currentTurn = PlayerColor.BLACK;
+        disablePieRule();
+    }
 
+    private void recolourOpeningPiece(PlayerColor color) {
         if (openingMove.cellType == CellType.OCT) {
-            board.placeStone(openingMove.row, openingMove.col, swappedColor);
+            board.placeStone(openingMove.row, openingMove.col, color);
             return;
         }
 
         if (openingMove.cellType == CellType.RHOMB) {
-            board.placeTile(openingMove.row, openingMove.col, swappedColor);
+            board.placeTile(openingMove.row, openingMove.col, color);
         }
     }
 
-    private Player findPlayer(PlayerColor color) {
+    public Player getPlayerForColor(PlayerColor color) {
         for (Player player : players) {
             if (player.getColor() == color) {
                 return player;
@@ -135,6 +118,16 @@ public class GameState {
         }
 
         return null;
+    }
+
+    public boolean isCurrentTurnBot() {
+        Player player = getPlayerForColor(currentTurn);
+        return player != null && player.getKind() == PlayerKind.BOT;
+    }
+
+    public boolean isCurrentTurnHuman() {
+        Player player = getPlayerForColor(currentTurn);
+        return player != null && player.getKind() == PlayerKind.HUMAN;
     }
 
     public PlayerColor getCurrentTurn() {

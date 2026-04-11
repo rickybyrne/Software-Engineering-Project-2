@@ -42,7 +42,7 @@ public class GameView {
         this.modeLabel = new Label("Mode: Not selected");
         this.turnLabel = new Label("Current turn: BLACK");
         this.devModeLabel = new Label("DevMode: ON");
-        this.pieRuleButton = new Button("Activate Pie Rule (swap colours)");
+        this.pieRuleButton = new Button("Activate Pie Rule (claim opening move)");
         this.winnerShown = false;
 
         buildLayout();
@@ -116,11 +116,12 @@ public class GameView {
         winnerShown = false;
         updateDevModeLabel();
         root.setCenter(boardView.getRoot());
-        render(controller.getState());
 
         pieRuleButton.setVisible(false);
         pieRuleButton.setManaged(false);
         pieRuleButton.setDisable(true);
+
+        render(controller.getState());
     }
 
     public void render(GameState state) {

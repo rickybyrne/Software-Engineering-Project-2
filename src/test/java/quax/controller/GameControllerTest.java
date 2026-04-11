@@ -14,7 +14,7 @@ import quax.model.PlayerColor;
 class GameControllerTest {
 
     @Test
-    void newGameUsesSelectedMode() {
+    void newHumanVsBotGameAppliesBotOpeningMove() {
         GameController controller = new GameController();
 
         controller.newGame(GameMode.HUMAN_V_BOT);
@@ -22,7 +22,40 @@ class GameControllerTest {
         GameState state = controller.getState();
         assertNotNull(state);
         assertEquals(GameMode.HUMAN_V_BOT, state.getMode());
-        assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
+        assertEquals(PlayerColor.BLACK, state.getBoard().getOct(5, 6).getOccupant());
+        assertEquals(PlayerColor.WHITE, state.getCurrentTurn());
+        assertEquals(1, state.getMoveCount());
+        assertTrue(controller.canActivatePieRule());
+    }
+
+    @Test
+    void humanMoveInHumanVsBotTriggersSingleBotReply() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_BOT);
+
+        assertTrue(controller.handleOctClick(0, 0));
+
+        GameState state = controller.getState();
+        assertEquals(PlayerColor.WHITE, state.getBoard().getOct(0, 0).getOccupant());
+        assertEquals(PlayerColor.WHITE, state.getCurrentTurn());
+        assertEquals(3, state.getMoveCount());
+        assertEquals(2, countOccupants(state, PlayerColor.BLACK));
+        assertFalse(controller.canActivatePieRule());
+    }
+
+    @Test
+    void pieRuleInHumanVsBotRecoloursOpeningMoveAndBotPlacesAgain() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_BOT);
+
+        assertTrue(controller.activatePieRule());
+
+        GameState state = controller.getState();
+        assertEquals(PlayerColor.WHITE, state.getBoard().getOct(5, 6).getOccupant());
+        assertEquals(PlayerColor.WHITE, state.getCurrentTurn());
+        assertEquals(2, state.getMoveCount());
+        assertEquals(1, countOccupants(state, PlayerColor.BLACK));
+        assertFalse(controller.canActivatePieRule());
     }
 
     @Test
@@ -221,5 +254,27 @@ class GameControllerTest {
 
         assertFalse(controller.isDevModeEnabled());
         assertFalse(controller.handleOctRightClick(0, 0));
+    }
+
+    private int countOccupants(GameState state, PlayerColor color) {
+        int count = 0;
+
+        for (int row = 0; row < 11; row++) {
+            for (int col = 0; col < 11; col++) {
+                if (state.getBoard().getOct(row, col).getOccupant() == color) {
+                    count++;
+                }
+            }
+        }
+
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < 10; col++) {
+                if (state.getBoard().getRhomb(row, col).getOccupant() == color) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
     }
 }
