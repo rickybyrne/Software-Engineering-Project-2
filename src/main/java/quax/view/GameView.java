@@ -88,6 +88,9 @@ public class GameView {
             if (event.getCode() == KeyCode.D) {
                 controller.toggleDevMode();
                 updateDevModeLabel();
+                if (controller.getState() != null) {
+                    render(controller.getState());
+                }
             }
         });
     }
@@ -154,6 +157,11 @@ public class GameView {
             pieRuleButton.setManaged(false);
         }
 
+        if (controller.isDevModeEnabled()) {
+            boardView.drawStrategyOverlay(controller.getLastBotOverlay());
+        } else {
+            boardView.clearStrategyOverlay();
+        }
     }
 
     private void connectBoardClicks(){
@@ -212,6 +220,7 @@ public class GameView {
         devModeLabel.setVisible(devModeEnabled);
         devModeLabel.setManaged(devModeEnabled);
         devModeLabel.setText(devModeEnabled ? "DevMode: ON" : "");
+        controller.toggleStrategyOverlay(devModeEnabled);
     }
 
     public Parent getRoot() {

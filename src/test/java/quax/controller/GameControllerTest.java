@@ -5,11 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 
+import quax.model.CellType;
 import quax.model.GameMode;
 import quax.model.GameState;
+import quax.model.Move;
 import quax.model.PlayerColor;
+import quax.model.StrategyOverlay;
 
 class GameControllerTest {
 
@@ -20,11 +24,15 @@ class GameControllerTest {
         controller.newGame(GameMode.HUMAN_V_BOT);
 
         GameState state = controller.getState();
+        Move openingMove = findOnlyOccupiedCell(state, PlayerColor.BLACK);
+
         assertNotNull(state);
         assertEquals(GameMode.HUMAN_V_BOT, state.getMode());
-        assertEquals(PlayerColor.BLACK, state.getBoard().getOct(5, 6).getOccupant());
+        assertEquals(PlayerColor.BLACK, occupantAt(state, openingMove));
         assertEquals(PlayerColor.WHITE, state.getCurrentTurn());
         assertEquals(1, state.getMoveCount());
+        assertEquals(1, countOccupants(state, PlayerColor.BLACK));
+        assertEquals(0, countOccupants(state, PlayerColor.WHITE));
         assertTrue(controller.canActivatePieRule());
     }
 
@@ -47,15 +55,29 @@ class GameControllerTest {
     void pieRuleInHumanVsBotRecoloursOpeningMoveAndBotPlacesAgain() {
         GameController controller = new GameController();
         controller.newGame(GameMode.HUMAN_V_BOT);
+        Move openingMove = findOnlyOccupiedCell(controller.getState(), PlayerColor.BLACK);
 
         assertTrue(controller.activatePieRule());
 
         GameState state = controller.getState();
-        assertEquals(PlayerColor.WHITE, state.getBoard().getOct(5, 6).getOccupant());
+        assertEquals(PlayerColor.WHITE, occupantAt(state, openingMove));
         assertEquals(PlayerColor.WHITE, state.getCurrentTurn());
         assertEquals(2, state.getMoveCount());
         assertEquals(1, countOccupants(state, PlayerColor.BLACK));
         assertFalse(controller.canActivatePieRule());
+    }
+
+    @Test
+    void humanVsBotGameCachesOverlayForLastBotMove() {
+        GameController controller = new GameController();
+
+        controller.newGame(GameMode.HUMAN_V_BOT);
+
+        StrategyOverlay overlay = controller.getLastBotOverlay();
+
+        assertNotNull(overlay);
+        assertFalse(overlay.getWeights().isEmpty());
+        assertFalse(overlay.getSuggestedPath().isEmpty());
     }
 
     @Test
@@ -276,5 +298,38 @@ class GameControllerTest {
         }
 
         return count;
+    }
+
+    private Move findOnlyOccupiedCell(GameState state, PlayerColor color) {
+        Move found = null;
+
+        for (int row = 0; row < 11; row++) {
+            for (int col = 0; col < 11; col++) {
+                if (state.getBoard().getOct(row, col).getOccupant() == color) {
+                    assertNull(found);
+                    found = new Move(CellType.OCT, row, col, color);
+                }
+            }
+        }
+
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < 10; col++) {
+                if (state.getBoard().getRhomb(row, col).getOccupant() == color) {
+                    assertNull(found);
+                    found = new Move(CellType.RHOMB, row, col, color);
+                }
+            }
+        }
+
+        assertNotNull(found);
+        return found;
+    }
+
+    private PlayerColor occupantAt(GameState state, Move move) {
+        if (move.getCellType() == CellType.OCT) {
+            return state.getBoard().getOct(move.getR(), move.getC()).getOccupant();
+        }
+
+        return state.getBoard().getRhomb(move.getR(), move.getC()).getOccupant();
     }
 }

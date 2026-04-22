@@ -1,5 +1,7 @@
 package quax.view;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import javafx.scene.Group;
@@ -12,6 +14,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import quax.model.Board;
+import quax.model.CellType;
 import quax.model.GameState;
 import quax.model.PlayerColor;
 import quax.model.StrategyOverlay;
@@ -51,6 +54,9 @@ public class BoardView {
     private static final Color GRID_STROKE = Color.web("#628cb3");
     private static final Color BLACK_SIDE = Color.BLACK;
     private static final Color WHITE_SIDE = Color.WHITE;
+    private static final Color HEAT_LOW = Color.web("#2b6cb0");
+    private static final Color HEAT_HIGH = Color.web("#f97316");
+    private static final Color PATH_STROKE = Color.web("#fff066");
 
     private final Pane root = new Pane();
     private final Group boardLayer = new Group();
@@ -60,6 +66,7 @@ public class BoardView {
     private final Polygon[][] rhombCells = new Polygon[RHOMB_GRID_SIZE][RHOMB_GRID_SIZE];
 
     public BoardView() {
+        overlayLayer.setMouseTransparent(true);
         drawBoard();
     }
 
@@ -253,14 +260,23 @@ public class BoardView {
 
         overlayLayer.getChildren().clear();
 
-        if (overlay == null || overlay.getNotes() == null || overlay.getNotes().isEmpty()) {
+        if (overlay == null) {
             return;
         }
 
+        drawHeatmap(overlay.getWeights());
+        drawSuggestedPath(overlay.getSuggestedPath());
+
         double y = 20;
-        for (String note : overlay.getNotes()) {
+        List<String> notes = overlay.getNotes();
+        if (notes == null) {
+            return;
+        }
+
+        for (String note : notes) {
             Text text = new Text(10, y, note);
             text.setFill(Color.DARKBLUE);
+            text.getStyleClass().add("strategy-note");
             overlayLayer.getChildren().add(text);
             y += 18;
         }
@@ -341,5 +357,127 @@ public class BoardView {
 
     public Pane getRoot() {
         return root;
+    }
+
+    private void drawHeatmap(Map<String, Double> weights) {
+        if (weights == null || weights.isEmpty()) {
+            return;
+        }
+
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+
+        for (double value : weights.values()) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+        }
+
+        for (Map.Entry<String, Double> entry : weights.entrySet()) {
+            OverlayCell cell = parseCellId(entry.getKey());
+            if (cell == null) {
+                continue;
+            }
+
+            Polygon source = polygonFor(cell);
+            if (source == null) {
+                continue;
+            }
+
+            double normalized = max == min ? 1.0 : (entry.getValue() - min) / (max - min);
+            Color base = HEAT_LOW.interpolate(HEAT_HIGH, normalized);
+
+            Polygon overlay = copyPolygon(source);
+            overlay.setFill(new Color(base.getRed(), base.getGreen(), base.getBlue(), 0.18 + (0.30 * normalized)));
+            overlay.setStroke(new Color(base.getRed(), base.getGreen(), base.getBlue(), 0.65));
+            overlay.setStrokeWidth(1.2);
+            overlay.getStyleClass().add("strategy-heat");
+            overlayLayer.getChildren().add(overlay);
+        }
+    }
+
+    private void drawSuggestedPath(List<String> suggestedPath) {
+        if (suggestedPath == null || suggestedPath.isEmpty()) {
+            return;
+        }
+
+        for (String cellId : suggestedPath) {
+            OverlayCell cell = parseCellId(cellId);
+            if (cell == null) {
+                continue;
+            }
+
+            Polygon source = polygonFor(cell);
+            if (source == null) {
+                continue;
+            }
+
+            Polygon overlay = copyPolygon(source);
+            overlay.setFill(Color.TRANSPARENT);
+            overlay.setStroke(PATH_STROKE);
+            overlay.setStrokeWidth(cell.cellType == CellType.OCT ? 3.2 : 2.6);
+            overlay.getStyleClass().add("strategy-path");
+            overlayLayer.getChildren().add(overlay);
+        }
+    }
+
+    private Polygon polygonFor(OverlayCell cell) {
+        if (cell.cellType == CellType.OCT) {
+            if (!isOctIndex(cell.row, cell.col)) {
+                return null;
+            }
+            return octCells[cell.row][cell.col];
+        }
+
+        if (!isRhombIndex(cell.row, cell.col)) {
+            return null;
+        }
+        return rhombCells[cell.row][cell.col];
+    }
+
+    private Polygon copyPolygon(Polygon source) {
+        Polygon overlay = new Polygon();
+        overlay.getPoints().addAll(source.getPoints());
+        overlay.setMouseTransparent(true);
+        return overlay;
+    }
+
+    private OverlayCell parseCellId(String cellId) {
+        if (cellId == null || cellId.isBlank()) {
+            return null;
+        }
+
+        String[] parts = cellId.split(":");
+        if (parts.length != 3) {
+            return null;
+        }
+
+        try {
+            CellType cellType = CellType.valueOf(parts[0]);
+            int row = Integer.parseInt(parts[1]);
+            int col = Integer.parseInt(parts[2]);
+            return new OverlayCell(cellType, row, col);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private boolean isOctIndex(int row, int col) {
+        return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+    }
+
+    private boolean isRhombIndex(int row, int col) {
+        return row >= 0 && row < RHOMB_GRID_SIZE && col >= 0 && col < RHOMB_GRID_SIZE;
+    }
+
+    private static final class OverlayCell {
+        private final CellType cellType;
+        private final int row;
+        private final int col;
+
+        private OverlayCell(CellType cellType, int row, int col) {
+            this.cellType = cellType;
+            this.row = row;
+            this.col = col;
+        }
     }
 }

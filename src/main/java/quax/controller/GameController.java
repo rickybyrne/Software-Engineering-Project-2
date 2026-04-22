@@ -4,10 +4,11 @@ import quax.model.BotEngine;
 import quax.model.CellType;
 import quax.model.GameMode;
 import quax.model.GameState;
-import quax.model.ModuleBotStrategy;
+import quax.model.GreedyPathStrategy;
 import quax.model.Move;
 import quax.model.MoveValidator;
 import quax.model.PlayerColor;
+import quax.model.StrategyOverlay;
 import quax.model.WinDetector;
 
 public class GameController {
@@ -17,6 +18,7 @@ public class GameController {
     private final WinDetector winDetector;
     private final DevModeEditor devModeEditor;
     private BotEngine botEngine;
+    private StrategyOverlay lastBotOverlay;
 
     public GameController() {
         this.validator = new MoveValidator();
@@ -41,9 +43,10 @@ public class GameController {
     public void newGame(GameMode mode) {
         state = new GameState(mode);
         devModeEditor.disable();
+        lastBotOverlay = null;
 
         if (mode == GameMode.HUMAN_V_BOT) {
-            botEngine = new BotEngine(new ModuleBotStrategy(), false);
+            botEngine = new BotEngine(new GreedyPathStrategy(), false);
             applyBotMoveIfNeeded();
         } else {
             botEngine = null;
@@ -140,8 +143,13 @@ public class GameController {
             return false;
         }
 
+        if (botEngine.getStrategy() != null) {
+            lastBotOverlay = botEngine.getStrategy().explain(state);
+        }
+
         Move botMove = botEngine.chooseMove(state);
         if (!validator.validate(botMove, state)) {
+            lastBotOverlay = null;
             return false;
         }
 
@@ -161,6 +169,10 @@ public class GameController {
         }
 
         botEngine.setDevMode(show);
+    }
+
+    public StrategyOverlay getLastBotOverlay() {
+        return lastBotOverlay;
     }
 
     public GameState getState() {

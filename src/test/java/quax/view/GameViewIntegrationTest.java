@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
@@ -219,6 +220,51 @@ class GameViewIntegrationTest {
         });
     }
 
+    @Test
+    void botOverlayAppearsOnlyWhenDevModeIsEnabled() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+            Scene scene = new Scene(root, 860, 680);
+
+            Button hvb = findButtonByText(root, "Human vs Bot");
+            assertNotNull(hvb);
+            hvb.fire();
+
+            assertTrue(findByStyleClass(root, "strategy-heat").isEmpty());
+            assertTrue(findByStyleClass(root, "strategy-path").isEmpty());
+
+            scene.getOnKeyPressed().handle(new KeyEvent(
+                    KeyEvent.KEY_PRESSED,
+                    "d",
+                    "d",
+                    KeyCode.D,
+                    false,
+                    false,
+                    false,
+                    false
+            ));
+
+            assertFalse(findByStyleClass(root, "strategy-heat").isEmpty());
+            assertFalse(findByStyleClass(root, "strategy-path").isEmpty());
+            assertFalse(findByStyleClass(root, "strategy-note").isEmpty());
+
+            scene.getOnKeyPressed().handle(new KeyEvent(
+                    KeyEvent.KEY_PRESSED,
+                    "d",
+                    "d",
+                    KeyCode.D,
+                    false,
+                    false,
+                    false,
+                    false
+            ));
+
+            assertTrue(findByStyleClass(root, "strategy-heat").isEmpty());
+            assertTrue(findByStyleClass(root, "strategy-path").isEmpty());
+        });
+    }
+
     private Label findLabelByText(Parent root, String text) {
         List<Label> labels = findAll(root, Label.class);
         for (Label label : labels) {
@@ -241,6 +287,16 @@ class GameViewIntegrationTest {
 
     private int countAllPolygons(Parent root) {
         return findAll(root, javafx.scene.shape.Polygon.class).size();
+    }
+
+    private List<Node> findByStyleClass(Parent root, String styleClass) {
+        List<Node> matches = new ArrayList<>();
+        for (Node node : findAll(root, Node.class)) {
+            if (node.getStyleClass().contains(styleClass)) {
+                matches.add(node);
+            }
+        }
+        return matches;
     }
 
     private <T extends javafx.scene.Node> List<T> findAll(Parent root, Class<T> type) {
