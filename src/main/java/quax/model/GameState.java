@@ -6,11 +6,13 @@ public class GameState {
         private final CellType cellType;
         private final int row;
         private final int col;
+        private final int moveOrder;
 
-        private OpeningMove(CellType cellType, int row, int col) {
+        private OpeningMove(CellType cellType, int row, int col, int moveOrder) {
             this.cellType = cellType;
             this.row = row;
             this.col = col;
+            this.moveOrder = moveOrder;
         }
     }
 
@@ -53,18 +55,21 @@ public class GameState {
             return;
         }
 
+        int appliedMoveOrder = moveCount + 1;
+
         if (moveCount == 0) {
             openingMove = new OpeningMove(
                     move.getCellType(),
                     move.getR(),
-                    move.getC()
+                    move.getC(),
+                    appliedMoveOrder
             );
         }
 
         if (move.isStoneMove()) {
-            board.placeStone(move.getR(), move.getC(), move.getPlayer());
+            board.placeStone(move.getR(), move.getC(), move.getPlayer(), appliedMoveOrder);
         } else if (move.isTileMove()) {
-            board.placeTile(move.getR(), move.getC(), move.getPlayer());
+            board.placeTile(move.getR(), move.getC(), move.getPlayer(), appliedMoveOrder);
         }
 
         moveCount++;
@@ -101,12 +106,12 @@ public class GameState {
 
     private void recolourOpeningPiece(PlayerColor color) {
         if (openingMove.cellType == CellType.OCT) {
-            board.placeStone(openingMove.row, openingMove.col, color);
+            board.placeStone(openingMove.row, openingMove.col, color, openingMove.moveOrder);
             return;
         }
 
         if (openingMove.cellType == CellType.RHOMB) {
-            board.placeTile(openingMove.row, openingMove.col, color);
+            board.placeTile(openingMove.row, openingMove.col, color, openingMove.moveOrder);
         }
     }
 

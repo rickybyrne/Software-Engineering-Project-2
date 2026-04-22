@@ -50,6 +50,15 @@ public class GameController {
         }
     }
 
+    public boolean restartGame() {
+        if (state == null) {
+            return false;
+        }
+
+        newGame(state.getMode());
+        return true;
+    }
+
     public boolean handleOctClick(int r, int c) {
         if (state == null) {
             return false;

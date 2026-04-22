@@ -14,6 +14,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import quax.controller.GameController;
@@ -36,11 +37,15 @@ class GameViewIntegrationTest {
             Label prompt = findLabelByText(root, "Select game mode");
             Label turn = findLabelByText(root, "Current turn: BLACK");
             Label devMode = findLabelByText(root, "DevMode: ON");
+            Button moveOrder = findButtonByText(root, "Show Move Order On Board");
+            Button moveList = findButtonByText(root, "Show Move List");
 
             assertNotNull(title);
             assertNotNull(prompt);
             assertNotNull(turn);
             assertTrue(devMode == null || !devMode.isVisible());
+            assertTrue(moveOrder == null || !moveOrder.isVisible());
+            assertTrue(moveList == null || !moveList.isVisible());
         });
     }
 
@@ -72,11 +77,14 @@ class GameViewIntegrationTest {
             Label modeLabel = findLabelByText(root, "Mode: Human vs Bot");
             Label turnLabel = findLabelByText(root, "Current turn: WHITE");
             Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (claim opening move)");
+            Button restartButton = findButtonByText(root, "Restart Game");
 
             assertNotNull(modeLabel);
             assertNotNull(turnLabel);
             assertNotNull(pieRuleButton);
+            assertNotNull(restartButton);
             assertTrue(pieRuleButton.isVisible());
+            assertTrue(restartButton.isVisible());
         });
     }
 
@@ -219,6 +227,121 @@ class GameViewIntegrationTest {
         });
     }
 
+    @Test
+    void devModeMoveOrderButtonTogglesMoveOrderLabels() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+            Scene scene = new Scene(root, 860, 680);
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            view.onOctClicked(0, 0);
+            view.onRhombClicked(0, 0);
+
+            Button hiddenMoveOrderButton = findButtonByText(root, "Show Move Order On Board");
+            assertNotNull(hiddenMoveOrderButton);
+            assertFalse(hiddenMoveOrderButton.isVisible());
+            assertEquals(0, countMoveOrderLabels(root));
+
+            scene.getOnKeyPressed().handle(new KeyEvent(
+                    KeyEvent.KEY_PRESSED,
+                    "d",
+                    "d",
+                    KeyCode.D,
+                    false,
+                    false,
+                    false,
+                    false
+            ));
+
+            Button showMoveOrderButton = findButtonByText(root, "Show Move Order On Board");
+            assertNotNull(showMoveOrderButton);
+            assertTrue(showMoveOrderButton.isVisible());
+
+            showMoveOrderButton.fire();
+
+            Button hideMoveOrderButton = findButtonByText(root, "Hide Move Order On Board");
+            assertNotNull(hideMoveOrderButton);
+            assertTrue(countMoveOrderLabels(root) >= 2);
+
+            hideMoveOrderButton.fire();
+
+            assertEquals(0, countMoveOrderLabels(root));
+        });
+    }
+
+    @Test
+    void devModeMoveListButtonShowsReadablePlacementOrder() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+            Scene scene = new Scene(root, 860, 680);
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            view.onOctClicked(0, 0);
+            view.onRhombClicked(0, 0);
+
+            Button hiddenMoveListButton = findButtonByText(root, "Show Move List");
+            assertNotNull(hiddenMoveListButton);
+            assertFalse(hiddenMoveListButton.isVisible());
+
+            scene.getOnKeyPressed().handle(new KeyEvent(
+                    KeyEvent.KEY_PRESSED,
+                    "d",
+                    "d",
+                    KeyCode.D,
+                    false,
+                    false,
+                    false,
+                    false
+            ));
+
+            Button showMoveListButton = findButtonByText(root, "Show Move List");
+            assertNotNull(showMoveListButton);
+            assertTrue(showMoveListButton.isVisible());
+
+            showMoveListButton.fire();
+
+            TextArea moveListArea = findTextArea(root);
+            assertNotNull(moveListArea);
+            assertTrue(moveListArea.isVisible());
+            assertTrue(moveListArea.getText().contains("1. BLACK stone at A11"));
+            assertTrue(moveListArea.getText().contains("2. WHITE tile at A11-B10"));
+        });
+    }
+
+    @Test
+    void restartButtonResetsCurrentGameState() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            view.onOctClicked(0, 0);
+            view.onRhombClicked(0, 0);
+
+            Button restartButton = findButtonByText(root, "Restart Game");
+            assertNotNull(restartButton);
+            restartButton.fire();
+
+            Label blackTurn = findLabelByText(root, "Current turn: BLACK");
+            Label modeLabel = findLabelByText(root, "Mode: Human vs Human");
+
+            assertNotNull(blackTurn);
+            assertNotNull(modeLabel);
+            assertEquals(0, countMoveOrderLabels(root));
+        });
+    }
+
     private Label findLabelByText(Parent root, String text) {
         List<Label> labels = findAll(root, Label.class);
         for (Label label : labels) {
@@ -241,6 +364,21 @@ class GameViewIntegrationTest {
 
     private int countAllPolygons(Parent root) {
         return findAll(root, javafx.scene.shape.Polygon.class).size();
+    }
+
+    private TextArea findTextArea(Parent root) {
+        List<TextArea> textAreas = findAll(root, TextArea.class);
+        return textAreas.isEmpty() ? null : textAreas.get(0);
+    }
+
+    private int countMoveOrderLabels(Parent root) {
+        int count = 0;
+        for (javafx.scene.text.Text text : findAll(root, javafx.scene.text.Text.class)) {
+            if (text.getStyleClass().contains("move-order-label")) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private <T extends javafx.scene.Node> List<T> findAll(Parent root, Class<T> type) {
