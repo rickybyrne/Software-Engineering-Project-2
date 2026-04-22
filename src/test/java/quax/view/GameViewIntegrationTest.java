@@ -21,6 +21,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import quax.controller.GameController;
+import quax.model.GameMode;
 import quax.testutil.FxTestHelper;
 
 class GameViewIntegrationTest {
@@ -31,21 +32,24 @@ class GameViewIntegrationTest {
     }
 
     @Test
-    void launchScreenShowsTitleModePromptAndDefaultTurn() {
+    void launchScreenShowsActiveHumanVsBotGame() {
         FxTestHelper.runOnFxThread(() -> {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
             Label title = findLabelByText(root, "Quax");
-            Label prompt = findLabelByText(root, "Select game mode");
-            Label turn = findLabelByText(root, "Current turn: BLACK");
+            Label mode = findLabelByText(root, "Mode: Human vs Bot");
+            Label turn = findLabelByText(root, "Current turn: WHITE");
             Label devMode = findLabelByText(root, "DevMode: ON");
             Button moveOrder = findButtonByText(root, "Show Move Order On Board");
             Button moveList = findButtonByText(root, "Show Move List");
+            Button restart = findButtonByText(root, "Restart Game");
 
             assertNotNull(title);
-            assertNotNull(prompt);
+            assertNotNull(mode);
             assertNotNull(turn);
+            assertNotNull(restart);
+            assertTrue(restart.isVisible());
             assertTrue(devMode == null || !devMode.isVisible());
             assertTrue(moveOrder == null || !moveOrder.isVisible());
             assertTrue(moveList == null || !moveList.isVisible());
@@ -53,7 +57,7 @@ class GameViewIntegrationTest {
     }
 
     @Test
-    void launchScreenShowsBothModeButtons() {
+    void launchScreenDoesNotShowModeMenuButtons() {
         FxTestHelper.runOnFxThread(() -> {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
@@ -61,21 +65,16 @@ class GameViewIntegrationTest {
             Button hvh = findButtonByText(root, "Human vs Human");
             Button hvb = findButtonByText(root, "Human vs Bot");
 
-            assertNotNull(hvh);
-            assertNotNull(hvb);
+            assertTrue(hvh == null || !hvh.isVisible());
+            assertTrue(hvb == null || !hvb.isVisible());
         });
     }
 
     @Test
-    void selectingHumanVsBotUpdatesModeLabel() {
+    void launchStartsHumanVsBotByDefault() {
         FxTestHelper.runOnFxThread(() -> {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
-
-            Button hvb = findButtonByText(root, "Human vs Bot");
-            assertNotNull(hvb);
-
-            hvb.fire();
 
             Label modeLabel = findLabelByText(root, "Mode: Human vs Bot");
             Label turnLabel = findLabelByText(root, "Current turn: WHITE");
@@ -97,10 +96,7 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             Label modeLabel = findLabelByText(root, "Mode: Human vs Human");
             assertNotNull(modeLabel);
@@ -124,9 +120,7 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             Button enableDevMode = findButtonByText(root, "Enable Dev Mode");
             assertNotNull(enableDevMode);
@@ -155,9 +149,7 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             Button pieRuleButton = findButtonByText(root, "Activate Pie Rule (claim opening move)");
             assertNotNull(pieRuleButton);
@@ -178,9 +170,7 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             view.onOctClicked(0, 0);
 
@@ -203,9 +193,7 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             for (int row = 0; row < 10; row++) {
                 view.onOctClicked(row, 0);
@@ -225,9 +213,7 @@ class GameViewIntegrationTest {
             Parent root = view.getRoot();
             Scene scene = new Scene(root, 860, 680);
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             Label devModeOff = findLabelByText(root, "DevMode: ON");
             assertTrue(devModeOff == null || !devModeOff.isVisible());
@@ -268,9 +254,7 @@ class GameViewIntegrationTest {
             Parent root = view.getRoot();
             Scene scene = new Scene(root, 860, 680);
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             view.onOctClicked(0, 0);
             view.onRhombClicked(0, 0);
@@ -313,10 +297,6 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
             Scene scene = new Scene(root, 860, 680);
-
-            Button hvb = findButtonByText(root, "Human vs Bot");
-            assertNotNull(hvb);
-            hvb.fire();
 
             assertTrue(findByStyleClass(root, "strategy-heat").isEmpty());
             assertTrue(findByStyleClass(root, "strategy-path").isEmpty());
@@ -361,9 +341,7 @@ class GameViewIntegrationTest {
             Parent root = view.getRoot();
             Scene scene = new Scene(root, 860, 680);
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             view.onOctClicked(0, 0);
             view.onRhombClicked(0, 0);
@@ -403,9 +381,7 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
 
-            Button hvh = findButtonByText(root, "Human vs Human");
-            assertNotNull(hvh);
-            hvh.fire();
+            startGame(view, GameMode.HUMAN_V_HUMAN);
 
             view.onOctClicked(0, 0);
             view.onRhombClicked(0, 0);
@@ -430,10 +406,6 @@ class GameViewIntegrationTest {
             Parent root = view.getRoot();
             Scene scene = new Scene(root, 760, 560);
 
-            Button hvb = findButtonByText(root, "Human vs Bot");
-            assertNotNull(hvb);
-            hvb.fire();
-
             Button enableDevMode = findButtonByText(root, "Enable Dev Mode");
             assertNotNull(enableDevMode);
             enableDevMode.fire();
@@ -452,10 +424,6 @@ class GameViewIntegrationTest {
             GameView view = new GameView(new GameController());
             Parent root = view.getRoot();
             Scene scene = new Scene(root, 1100, 700);
-
-            Button hvb = findButtonByText(root, "Human vs Bot");
-            assertNotNull(hvb);
-            hvb.fire();
 
             Button enableDevMode = findButtonByText(root, "Enable Dev Mode");
             assertNotNull(enableDevMode);
@@ -496,6 +464,16 @@ class GameViewIntegrationTest {
 
     private int countAllPolygons(Parent root) {
         return findAll(root, javafx.scene.shape.Polygon.class).size();
+    }
+
+    private void startGame(GameView view, GameMode mode) {
+        try {
+            java.lang.reflect.Method startGame = GameView.class.getDeclaredMethod("startGame", GameMode.class);
+            startGame.setAccessible(true);
+            startGame.invoke(view, mode);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Failed to start game in test", e);
+        }
     }
 
     private List<Node> findByStyleClass(Parent root, String styleClass) {

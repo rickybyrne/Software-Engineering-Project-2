@@ -84,7 +84,7 @@ public class GameView {
 
         buildLayout();
         connectBoardClicks();
-        showModeSelection();
+        startGame(GameMode.HUMAN_V_BOT);
     }
 
     private void buildLayout() {
@@ -175,28 +175,6 @@ public class GameView {
                 toggleDevMode();
             }
         });
-    }
-
-    private void showModeSelection() {
-
-        gameStarted = false;
-
-        Label prompt = new Label("Select game mode");
-        prompt.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 20));
-
-        Button humanVsHumanButton = new Button("Human vs Human");
-        humanVsHumanButton.setPrefWidth(220);
-        humanVsHumanButton.setOnAction(event -> startGame(GameMode.HUMAN_V_HUMAN));
-
-        Button humanVsBotButton = new Button("Human vs Bot");
-        humanVsBotButton.setPrefWidth(220);
-        humanVsBotButton.setOnAction(event -> startGame(GameMode.HUMAN_V_BOT));
-
-        VBox modeSelection = new VBox(14, prompt, humanVsHumanButton, humanVsBotButton);
-        modeSelection.setAlignment(Pos.CENTER);
-        modeSelection.setPadding(new Insets(24));
-
-        root.setCenter(modeSelection);
     }
 
     private void startGame(GameMode mode) {
