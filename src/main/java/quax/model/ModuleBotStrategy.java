@@ -180,11 +180,13 @@ public class ModuleBotStrategy implements BotStrategy {
             double opponentDelay = pathDelay(opponentPathBefore, opponentPathAfter) * 65;
             double module = moduleScore(board, move, player);
             double repair = repairScore(board, move, player);
+            double bridge = bridgeScore(board, move, player);
+            double bridgeBlock = bridgeBlockScore(board, move, player);
             double center = centerScore(move);
             double stoneBias = move.isStoneMove() ? 4 : 0;
 
-            double score = ownPathGain + opponentDelay + module + repair + center + stoneBias;
-            String reason = reasonFor(ownPathGain, opponentDelay, module, repair);
+            double score = ownPathGain + opponentDelay + module + repair + bridge + bridgeBlock + center + stoneBias;
+            String reason = reasonFor(ownPathGain, opponentDelay, module, repair, bridge, bridgeBlock);
 
             rankedMoves.add(new MoveScore(move, score, reason));
         }
@@ -219,7 +221,20 @@ public class ModuleBotStrategy implements BotStrategy {
         return after - before;
     }
 
-    private String reasonFor(double ownPathGain, double opponentDelay, double module, double repair) {
+    private String reasonFor(
+            double ownPathGain,
+            double opponentDelay,
+            double module,
+            double repair,
+            double bridge,
+            double bridgeBlock
+    ) {
+        if (bridge >= 170) {
+            return "building bridge chain";
+        }
+        if (bridgeBlock >= 150) {
+            return "cutting bridge threat";
+        }
         if (module >= 90) {
             return "building module";
         }
@@ -278,6 +293,175 @@ public class ModuleBotStrategy implements BotStrategy {
         }
 
         return score;
+    }
+
+    private double bridgeScore(Board board, Move move, PlayerColor player) {
+        if (move.isTileMove()) {
+            return tileBridgeScore(board, move, player);
+        }
+
+        if (move.isStoneMove()) {
+            return stoneBridgeScore(board, move, player);
+        }
+
+        return 0;
+    }
+
+    private double tileBridgeScore(Board board, Move move, PlayerColor player) {
+        int row = move.getR();
+        int col = move.getC();
+        double score = 0;
+
+        score += bridgePairScore(board, row, col, row + 1, col + 1, player);
+        score += bridgePairScore(board, row, col + 1, row + 1, col, player);
+
+        return score;
+    }
+
+    private double stoneBridgeScore(Board board, Move move, PlayerColor player) {
+        int row = move.getR();
+        int col = move.getC();
+        double score = 0;
+
+        score += stoneBridgeDirectionScore(board, row, col, row - 1, col - 1, row - 1, col - 1, player);
+        score += stoneBridgeDirectionScore(board, row, col, row - 1, col + 1, row - 1, col, player);
+        score += stoneBridgeDirectionScore(board, row, col, row + 1, col - 1, row, col - 1, player);
+        score += stoneBridgeDirectionScore(board, row, col, row + 1, col + 1, row, col, player);
+
+        return score;
+    }
+
+    private double stoneBridgeDirectionScore(
+            Board board,
+            int row,
+            int col,
+            int targetRow,
+            int targetCol,
+            int rhombRow,
+            int rhombCol,
+            PlayerColor player
+    ) {
+        if (!board.isOctInBounds(targetRow, targetCol)) {
+            return 0;
+        }
+
+        boolean targetOwned = ownsOct(board, targetRow, targetCol, player);
+        if (!targetOwned) {
+            return 0;
+        }
+
+        if (board.isRhombInBounds(rhombRow, rhombCol) && board.getRhomb(rhombRow, rhombCol).getOccupant() == player) {
+            return 185;
+        }
+
+        if (board.isRhombInBounds(rhombRow, rhombCol) && board.getRhomb(rhombRow, rhombCol).isEmpty()) {
+            return 52;
+        }
+
+        return 0;
+    }
+
+    private double bridgePairScore(
+            Board board,
+            int rowA,
+            int colA,
+            int rowB,
+            int colB,
+            PlayerColor player
+    ) {
+        if (!board.isOctInBounds(rowA, colA) || !board.isOctInBounds(rowB, colB)) {
+            return 0;
+        }
+
+        boolean aOwned = ownsOct(board, rowA, colA, player);
+        boolean bOwned = ownsOct(board, rowB, colB, player);
+        boolean aEmpty = isEmptyOct(board, rowA, colA);
+        boolean bEmpty = isEmptyOct(board, rowB, colB);
+
+        if (aOwned && bOwned) {
+            return 250;
+        }
+
+        if ((aOwned && bEmpty) || (bOwned && aEmpty)) {
+            return 38;
+        }
+
+        return 0;
+    }
+
+    private double bridgeBlockScore(Board board, Move move, PlayerColor player) {
+        PlayerColor opponent = opponent(player);
+
+        if (move.isTileMove()) {
+            int row = move.getR();
+            int col = move.getC();
+            return blockingBridgePairScore(board, row, col, row + 1, col + 1, opponent)
+                    + blockingBridgePairScore(board, row, col + 1, row + 1, col, opponent);
+        }
+
+        if (move.isStoneMove()) {
+            int row = move.getR();
+            int col = move.getC();
+            return blockingStoneBridgeScore(board, row, col, row - 1, col - 1, row - 1, col - 1, opponent)
+                    + blockingStoneBridgeScore(board, row, col, row - 1, col + 1, row - 1, col, opponent)
+                    + blockingStoneBridgeScore(board, row, col, row + 1, col - 1, row, col - 1, opponent)
+                    + blockingStoneBridgeScore(board, row, col, row + 1, col + 1, row, col, opponent);
+        }
+
+        return 0;
+    }
+
+    private double blockingBridgePairScore(
+            Board board,
+            int rowA,
+            int colA,
+            int rowB,
+            int colB,
+            PlayerColor opponent
+    ) {
+        if (!board.isOctInBounds(rowA, colA) || !board.isOctInBounds(rowB, colB)) {
+            return 0;
+        }
+
+        boolean aOwned = ownsOct(board, rowA, colA, opponent);
+        boolean bOwned = ownsOct(board, rowB, colB, opponent);
+        boolean aEmpty = isEmptyOct(board, rowA, colA);
+        boolean bEmpty = isEmptyOct(board, rowB, colB);
+
+        if (aOwned && bOwned) {
+            return 205;
+        }
+
+        if ((aOwned && bEmpty) || (bOwned && aEmpty)) {
+            return 26;
+        }
+
+        return 0;
+    }
+
+    private double blockingStoneBridgeScore(
+            Board board,
+            int row,
+            int col,
+            int targetRow,
+            int targetCol,
+            int rhombRow,
+            int rhombCol,
+            PlayerColor opponent
+    ) {
+        if (!board.isOctInBounds(targetRow, targetCol) || !ownsOct(board, targetRow, targetCol, opponent)) {
+            return 0;
+        }
+
+        if (board.isRhombInBounds(rhombRow, rhombCol) && board.getRhomb(rhombRow, rhombCol).getOccupant() == opponent) {
+            return 175;
+        }
+
+        if (board.isRhombInBounds(rhombRow, rhombCol) && board.getRhomb(rhombRow, rhombCol).isEmpty()) {
+            return 24;
+        }
+
+        return 0;
     }
 
     private double rhombModuleScore(Board board, Move move, PlayerColor player) {

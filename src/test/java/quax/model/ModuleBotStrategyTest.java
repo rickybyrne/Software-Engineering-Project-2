@@ -68,6 +68,39 @@ class ModuleBotStrategyTest {
     }
 
     @Test
+    void prefersTileThatCompletesDiagonalBridge() {
+        GameState state = blackTurnAfterTwoMoves();
+        state.getBoard().placeStone(5, 5, PlayerColor.BLACK);
+        state.getBoard().placeStone(6, 6, PlayerColor.BLACK);
+
+        Move move = strategy.selectMove(state);
+
+        assertMove(move, CellType.RHOMB, 5, 5, PlayerColor.BLACK);
+    }
+
+    @Test
+    void prefersStoneThatActivatesExistingBridgeTile() {
+        GameState state = blackTurnAfterTwoMoves();
+        state.getBoard().placeStone(6, 6, PlayerColor.BLACK);
+        state.getBoard().placeTile(5, 5, PlayerColor.BLACK);
+
+        Move move = strategy.selectMove(state);
+
+        assertMove(move, CellType.OCT, 5, 5, PlayerColor.BLACK);
+    }
+
+    @Test
+    void blocksOpponentDiagonalBridgeBeforeItForms() {
+        GameState state = blackTurnAfterTwoMoves();
+        state.getBoard().placeStone(4, 4, PlayerColor.WHITE);
+        state.getBoard().placeStone(5, 5, PlayerColor.WHITE);
+
+        Move move = strategy.selectMove(state);
+
+        assertMove(move, CellType.RHOMB, 4, 4, PlayerColor.BLACK);
+    }
+
+    @Test
     void strategyIsDeterministicForSameState() {
         GameState state = blackTurnAfterTwoMoves();
         state.getBoard().placeStone(5, 4, PlayerColor.BLACK);

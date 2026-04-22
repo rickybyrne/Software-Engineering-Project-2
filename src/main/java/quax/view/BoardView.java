@@ -60,12 +60,15 @@ public class BoardView {
 
     private final Pane root = new Pane();
     private final Group boardLayer = new Group();
+    private final Group moveOrderLayer = new Group();
     private final Group overlayLayer = new Group();
 
     private final Polygon[][] octCells = new Polygon[BOARD_SIZE][BOARD_SIZE];
     private final Polygon[][] rhombCells = new Polygon[RHOMB_GRID_SIZE][RHOMB_GRID_SIZE];
+    private boolean showMoveOrder;
 
     public BoardView() {
+        moveOrderLayer.setMouseTransparent(true);
         overlayLayer.setMouseTransparent(true);
         drawBoard();
     }
@@ -73,6 +76,7 @@ public class BoardView {
     public void drawBoard() {
 
         boardLayer.getChildren().clear();
+        moveOrderLayer.getChildren().clear();
         overlayLayer.getChildren().clear();
 
         double boardLeft = OUTER_PADDING + LABEL_MARGIN + SIDE_BAND;
@@ -85,7 +89,7 @@ public class BoardView {
         drawRhombGrid(boardLeft, boardTop);
         drawCoordinateLabels(boardLeft, boardTop, boardWidth, boardHeight);
 
-        root.getChildren().setAll(boardLayer, overlayLayer);
+        root.getChildren().setAll(boardLayer, moveOrderLayer, overlayLayer);
 
         double prefWidth = boardLeft + boardWidth + SIDE_BAND + LABEL_MARGIN + OUTER_PADDING;
         double prefHeight = boardTop + boardHeight + SIDE_BAND + LABEL_MARGIN + OUTER_PADDING;
@@ -254,6 +258,74 @@ public class BoardView {
                 rhombCells[r][c].setFill(colorForOccupant(occupant, RHOMB_EMPTY));
             }
         }
+
+        drawMoveOrderOverlay(state);
+    }
+
+    public void setShowMoveOrder(boolean showMoveOrder, GameState state) {
+        this.showMoveOrder = showMoveOrder;
+        drawMoveOrderOverlay(state);
+    }
+
+    public boolean isShowingMoveOrder() {
+        return showMoveOrder;
+    }
+
+    private void drawMoveOrderOverlay(GameState state) {
+        moveOrderLayer.getChildren().clear();
+
+        if (!showMoveOrder || state == null) {
+            return;
+        }
+
+        Board board = state.getBoard();
+        double boardLeft = OUTER_PADDING + LABEL_MARGIN + SIDE_BAND;
+        double boardTop = OUTER_PADDING + LABEL_MARGIN + SIDE_BAND;
+
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                int order = board.getOct(r, c).getMoveOrder();
+                if (order > 0) {
+                    double centerX = boardLeft + OCT_APOTHEM + c * GRID_STEP;
+                    double centerY = boardTop + OCT_APOTHEM + r * GRID_STEP;
+                    addMoveOrderLabel(order, centerX, centerY, board.getOct(r, c).getOccupant(), 15);
+                }
+            }
+        }
+
+        for (int r = 0; r < RHOMB_GRID_SIZE; r++) {
+            for (int c = 0; c < RHOMB_GRID_SIZE; c++) {
+                int order = board.getRhomb(r, c).getMoveOrder();
+                if (order > 0) {
+                    double centerX = boardLeft + OCT_APOTHEM + (c + 0.5) * GRID_STEP;
+                    double centerY = boardTop + OCT_APOTHEM + (r + 0.5) * GRID_STEP;
+                    addMoveOrderLabel(order, centerX, centerY, board.getRhomb(r, c).getOccupant(), 12);
+                }
+            }
+        }
+    }
+
+    private void addMoveOrderLabel(
+            int order,
+            double centerX,
+            double centerY,
+            PlayerColor occupant,
+            int fontSize
+    ) {
+        Text text = new Text(String.valueOf(order));
+        text.getStyleClass().add("move-order-label");
+        text.setMouseTransparent(true);
+        text.setFill(occupant == PlayerColor.BLACK ? Color.WHITE : Color.BLACK);
+        text.setStroke(occupant == PlayerColor.BLACK ? Color.BLACK : Color.WHITE);
+        text.setStrokeWidth(0.45);
+        text.setFont(Font.font("Arial", FontWeight.EXTRA_BOLD, fontSize));
+
+        double width = text.getLayoutBounds().getWidth();
+        double height = text.getLayoutBounds().getHeight();
+        text.setX(centerX - width / 2.0);
+        text.setY(centerY + height / 4.0);
+
+        moveOrderLayer.getChildren().add(text);
     }
 
     public void drawStrategyOverlay(StrategyOverlay overlay) {

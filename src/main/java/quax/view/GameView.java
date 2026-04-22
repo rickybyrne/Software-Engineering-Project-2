@@ -7,6 +7,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
@@ -29,7 +30,13 @@ public class GameView {
     private final Label turnLabel;
     private final Label devModeLabel;
     private final Button pieRuleButton;
+    private final Button restartButton;
+    private final Button moveOrderButton;
+    private final Button moveListButton;
+    private final TextArea moveListArea;
     private boolean winnerShown;
+    private boolean showMoveOrder;
+    private boolean showMoveList;
     private static final Font STATUS_FONT = Font.font("Arial", 16);
     private static final Font WINNER_FONT = Font.font("Arial", FontWeight.EXTRA_BOLD, 28);
 
@@ -43,7 +50,13 @@ public class GameView {
         this.turnLabel = new Label("Current turn: BLACK");
         this.devModeLabel = new Label("DevMode: ON");
         this.pieRuleButton = new Button("Activate Pie Rule (claim opening move)");
+        this.restartButton = new Button("Restart Game");
+        this.moveOrderButton = new Button("Show Move Order On Board");
+        this.moveListButton = new Button("Show Move List");
+        this.moveListArea = new TextArea();
         this.winnerShown = false;
+        this.showMoveOrder = false;
+        this.showMoveList = false;
 
         buildLayout();
         connectBoardClicks();
@@ -59,14 +72,43 @@ public class GameView {
 
         pieRuleButton.setPrefWidth(240);
         pieRuleButton.setOnAction(e -> onPieRuleClicked());
+        restartButton.setPrefWidth(160);
+        restartButton.setOnAction(e -> onRestartClicked());
+        moveOrderButton.setPrefWidth(160);
+        moveOrderButton.setOnAction(e -> onMoveOrderClicked());
+        moveListButton.setPrefWidth(160);
+        moveListButton.setOnAction(e -> onMoveListClicked());
+        moveListArea.setEditable(false);
+        moveListArea.setWrapText(true);
+        moveListArea.setPrefRowCount(14);
+        moveListArea.setPrefColumnCount(26);
 
         // Hide it by default (important for the mode selection screen)
         pieRuleButton.setVisible(false);
         pieRuleButton.setManaged(false);
+        restartButton.setVisible(false);
+        restartButton.setManaged(false);
         devModeLabel.setVisible(false);
         devModeLabel.setManaged(false);
+        moveOrderButton.setVisible(false);
+        moveOrderButton.setManaged(false);
+        moveListButton.setVisible(false);
+        moveListButton.setManaged(false);
+        moveListArea.setVisible(false);
+        moveListArea.setManaged(false);
 
-        VBox topPanel = new VBox(6, titleLabel, modeLabel, turnLabel, devModeLabel, pieRuleButton);
+        VBox topPanel = new VBox(
+                6,
+                titleLabel,
+                modeLabel,
+                turnLabel,
+                devModeLabel,
+                moveOrderButton,
+                moveListButton,
+                moveListArea,
+                restartButton,
+                pieRuleButton
+        );
         topPanel.setAlignment(Pos.CENTER);
         topPanel.setPadding(new Insets(16));
 
@@ -117,12 +159,18 @@ public class GameView {
     private void startGame(GameMode mode) {
         controller.newGame(mode);
         winnerShown = false;
+        showMoveOrder = false;
+        showMoveList = false;
+        boardView.setShowMoveOrder(false, controller.getState());
         updateDevModeLabel();
         root.setCenter(boardView.getRoot());
 
         pieRuleButton.setVisible(false);
         pieRuleButton.setManaged(false);
         pieRuleButton.setDisable(true);
+        restartButton.setVisible(true);
+        restartButton.setManaged(true);
+        restartButton.setDisable(false);
 
         render(controller.getState());
     }
@@ -134,6 +182,7 @@ public class GameView {
         }
 
         boardView.updateFrom(state);
+        boardView.setShowMoveOrder(showMoveOrder, state);
 
         modeLabel.setText("Mode: " + asReadableMode(state.getMode()));
         turnLabel.setText(state.isGameOver()
@@ -145,6 +194,8 @@ public class GameView {
             winnerShown = true;
             showWinner(state.getWinner());
         }
+
+        updateMoveList(state);
 
         boolean canPie = controller.canActivatePieRule();
 
@@ -200,6 +251,37 @@ public class GameView {
         }
     }
 
+    public void onRestartClicked() {
+        if (controller.restartGame()) {
+            winnerShown = false;
+            showMoveOrder = false;
+            showMoveList = false;
+            boardView.setShowMoveOrder(false, controller.getState());
+            updateDevModeLabel();
+            render(controller.getState());
+        }
+    }
+
+    public void onMoveOrderClicked() {
+        if (!controller.isDevModeEnabled()) {
+            return;
+        }
+
+        showMoveOrder = !showMoveOrder;
+        boardView.setShowMoveOrder(showMoveOrder, controller.getState());
+        updateMoveOrderButton();
+    }
+
+    public void onMoveListClicked() {
+        if (!controller.isDevModeEnabled()) {
+            return;
+        }
+
+        showMoveList = !showMoveList;
+        updateMoveList(controller.getState());
+        updateMoveListButton();
+    }
+
     public void showWinner(PlayerColor winner) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Game Finished");
@@ -221,6 +303,97 @@ public class GameView {
         devModeLabel.setManaged(devModeEnabled);
         devModeLabel.setText(devModeEnabled ? "DevMode: ON" : "");
         controller.toggleStrategyOverlay(devModeEnabled);
+
+        if (!devModeEnabled) {
+            showMoveOrder = false;
+            showMoveList = false;
+            boardView.setShowMoveOrder(false, controller.getState());
+        }
+
+        moveOrderButton.setVisible(devModeEnabled);
+        moveOrderButton.setManaged(devModeEnabled);
+        moveListButton.setVisible(devModeEnabled);
+        moveListButton.setManaged(devModeEnabled);
+        moveListArea.setVisible(devModeEnabled && showMoveList);
+        moveListArea.setManaged(devModeEnabled && showMoveList);
+        updateMoveOrderButton();
+        updateMoveListButton();
+        updateMoveList(controller.getState());
+    }
+
+    private void updateMoveOrderButton() {
+        moveOrderButton.setText(showMoveOrder ? "Hide Move Order On Board" : "Show Move Order On Board");
+    }
+
+    private void updateMoveListButton() {
+        moveListButton.setText(showMoveList ? "Hide Move List" : "Show Move List");
+    }
+
+    private void updateMoveList(GameState state) {
+        if (!showMoveList || state == null) {
+            moveListArea.clear();
+            moveListArea.setVisible(false);
+            moveListArea.setManaged(false);
+            return;
+        }
+
+        moveListArea.setText(buildMoveList(state));
+        moveListArea.setVisible(true);
+        moveListArea.setManaged(true);
+    }
+
+    private String buildMoveList(GameState state) {
+        String[] entries = new String[Math.max(0, state.getMoveCount())];
+
+        for (int r = 0; r < 11; r++) {
+            for (int c = 0; c < 11; c++) {
+                int order = state.getBoard().getOct(r, c).getMoveOrder();
+                if (order > 0) {
+                    entries[order - 1] = order + ". "
+                            + state.getBoard().getOct(r, c).getOccupant()
+                            + " stone at "
+                            + formatOctCoordinate(r, c);
+                }
+            }
+        }
+
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 10; c++) {
+                int order = state.getBoard().getRhomb(r, c).getMoveOrder();
+                if (order > 0) {
+                    entries[order - 1] = order + ". "
+                            + state.getBoard().getRhomb(r, c).getOccupant()
+                            + " tile at "
+                            + formatRhombCoordinate(r, c);
+                }
+            }
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (String entry : entries) {
+            if (entry == null) {
+                continue;
+            }
+
+            if (!builder.isEmpty()) {
+                builder.append('\n');
+            }
+            builder.append(entry);
+        }
+
+        return builder.toString();
+    }
+
+    private String formatOctCoordinate(int r, int c) {
+        return String.valueOf((char) ('A' + c)) + (11 - r);
+    }
+
+    private String formatRhombCoordinate(int r, int c) {
+        char leftFile = (char) ('A' + c);
+        char rightFile = (char) ('A' + c + 1);
+        int topRow = 11 - r;
+        int bottomRow = 10 - r;
+        return leftFile + String.valueOf(topRow) + "-" + rightFile + bottomRow;
     }
 
     public Parent getRoot() {

@@ -278,6 +278,24 @@ class GameControllerTest {
         assertFalse(controller.handleOctRightClick(0, 0));
     }
 
+    @Test
+    void restartGameResetsBoardAndKeepsCurrentMode() {
+        GameController controller = new GameController();
+        controller.newGame(GameMode.HUMAN_V_HUMAN);
+        assertTrue(controller.handleOctClick(0, 0));
+        assertTrue(controller.handleRhombClick(0, 0));
+
+        assertTrue(controller.restartGame());
+
+        GameState state = controller.getState();
+        assertEquals(GameMode.HUMAN_V_HUMAN, state.getMode());
+        assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
+        assertEquals(0, state.getMoveCount());
+        assertNull(state.getBoard().getOct(0, 0).getOccupant());
+        assertNull(state.getBoard().getRhomb(0, 0).getOccupant());
+        assertFalse(state.isGameOver());
+    }
+
     private int countOccupants(GameState state, PlayerColor color) {
         int count = 0;
 

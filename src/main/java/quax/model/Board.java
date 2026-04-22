@@ -25,12 +25,14 @@ public class Board {
         for (int r = 0; r < octCells.length; r++) {
             for (int c = 0; c < octCells[r].length; c++) {
                 octCells[r][c].setOccupant(other.getOct(r, c).getOccupant());
+                octCells[r][c].setMoveOrder(other.getOct(r, c).getMoveOrder());
             }
         }
 
         for (int r = 0; r < rhombCells.length; r++) {
             for (int c = 0; c < rhombCells[r].length; c++) {
                 rhombCells[r][c].setOccupant(other.getRhomb(r, c).getOccupant());
+                rhombCells[r][c].setMoveOrder(other.getRhomb(r, c).getMoveOrder());
             }
         }
     }
@@ -68,11 +70,23 @@ public class Board {
     }
 
     public void placeStone(int r, int c, PlayerColor color) {
-        getOct(r, c).setOccupant(color);
+        placeStone(r, c, color, 0);
+    }
+
+    public void placeStone(int r, int c, PlayerColor color, int moveOrder) {
+        Cell cell = getOct(r, c);
+        cell.setOccupant(color);
+        cell.setMoveOrder(color == null ? 0 : moveOrder);
     }
 
     public void placeTile(int r, int c, PlayerColor color) {
-        getRhomb(r, c).setOccupant(color);
+        placeTile(r, c, color, 0);
+    }
+
+    public void placeTile(int r, int c, PlayerColor color, int moveOrder) {
+        Cell cell = getRhomb(r, c);
+        cell.setOccupant(color);
+        cell.setMoveOrder(color == null ? 0 : moveOrder);
     }
 
     public boolean isOctInBounds(int r, int c) {

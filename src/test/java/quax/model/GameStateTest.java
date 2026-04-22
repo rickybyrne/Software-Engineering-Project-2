@@ -52,6 +52,17 @@ class GameStateTest {
     }
 
     @Test
+    void applyRecordsMoveOrderOnPlacedCells() {
+        GameState state = new GameState(GameMode.HUMAN_V_HUMAN);
+
+        state.apply(new Move(CellType.OCT, 0, 0, PlayerColor.BLACK));
+        state.apply(new Move(CellType.RHOMB, 0, 0, PlayerColor.WHITE));
+
+        assertEquals(1, state.getBoard().getOct(0, 0).getMoveOrder());
+        assertEquals(2, state.getBoard().getRhomb(0, 0).getMoveOrder());
+    }
+
+    @Test
     void claimOpeningMoveForWhiteRecoloursOpeningOctWithoutSwappingPlayers() {
         GameState state = new GameState(GameMode.HUMAN_V_HUMAN);
 
@@ -68,6 +79,7 @@ class GameStateTest {
         assertSame(blackPlayer, state.getPlayerForColor(PlayerColor.BLACK));
         assertSame(whitePlayer, state.getPlayerForColor(PlayerColor.WHITE));
         assertEquals(PlayerColor.WHITE, state.getBoard().getOct(0, 0).getOccupant());
+        assertEquals(1, state.getBoard().getOct(0, 0).getMoveOrder());
         assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
         assertFalse(state.canUsePieRule());
         assertFalse(state.isPieRuleAvailable());
@@ -82,6 +94,7 @@ class GameStateTest {
         state.claimOpeningMoveForWhite();
 
         assertEquals(PlayerColor.WHITE, state.getBoard().getRhomb(0, 0).getOccupant());
+        assertEquals(1, state.getBoard().getRhomb(0, 0).getMoveOrder());
         assertEquals(PlayerColor.BLACK, state.getCurrentTurn());
         assertFalse(state.isPieRuleAvailable());
     }
