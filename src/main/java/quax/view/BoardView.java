@@ -13,6 +13,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.scene.transform.Scale;
 import quax.model.Board;
 import quax.model.CellType;
 import quax.model.GameState;
@@ -59,17 +60,29 @@ public class BoardView {
     private static final Color PATH_STROKE = Color.web("#fff066");
 
     private final Pane root = new Pane();
+    private final Group contentGroup = new Group();
     private final Group boardLayer = new Group();
     private final Group moveOrderLayer = new Group();
     private final Group overlayLayer = new Group();
+    private final Scale contentScale = new Scale(1, 1, 0, 0);
 
     private final Polygon[][] octCells = new Polygon[BOARD_SIZE][BOARD_SIZE];
     private final Polygon[][] rhombCells = new Polygon[RHOMB_GRID_SIZE][RHOMB_GRID_SIZE];
     private boolean showMoveOrder;
+    private double contentWidth;
+    private double contentHeight;
 
     public BoardView() {
         moveOrderLayer.setMouseTransparent(true);
         overlayLayer.setMouseTransparent(true);
+        contentGroup.getChildren().addAll(boardLayer, moveOrderLayer, overlayLayer);
+        contentGroup.getTransforms().add(contentScale);
+        root.getChildren().add(contentGroup);
+        root.getStyleClass().add("board-view");
+        root.setMinSize(220, 220);
+        root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        root.widthProperty().addListener((obs, oldValue, newValue) -> layoutBoard());
+        root.heightProperty().addListener((obs, oldValue, newValue) -> layoutBoard());
         drawBoard();
     }
 
@@ -89,12 +102,11 @@ public class BoardView {
         drawRhombGrid(boardLeft, boardTop);
         drawCoordinateLabels(boardLeft, boardTop, boardWidth, boardHeight);
 
-        root.getChildren().setAll(boardLayer, moveOrderLayer, overlayLayer);
+        contentWidth = boardLeft + boardWidth + SIDE_BAND + LABEL_MARGIN + OUTER_PADDING;
+        contentHeight = boardTop + boardHeight + SIDE_BAND + LABEL_MARGIN + OUTER_PADDING;
 
-        double prefWidth = boardLeft + boardWidth + SIDE_BAND + LABEL_MARGIN + OUTER_PADDING;
-        double prefHeight = boardTop + boardHeight + SIDE_BAND + LABEL_MARGIN + OUTER_PADDING;
-
-        root.setPrefSize(prefWidth, prefHeight);
+        root.setPrefSize(contentWidth, contentHeight);
+        layoutBoard();
     }
 
     private void drawGoalSides(double boardLeft, double boardTop, double boardWidth, double boardHeight) {
@@ -338,20 +350,6 @@ public class BoardView {
 
         drawHeatmap(overlay.getWeights());
         drawSuggestedPath(overlay.getSuggestedPath());
-
-        double y = 20;
-        List<String> notes = overlay.getNotes();
-        if (notes == null) {
-            return;
-        }
-
-        for (String note : notes) {
-            Text text = new Text(10, y, note);
-            text.setFill(Color.DARKBLUE);
-            text.getStyleClass().add("strategy-note");
-            overlayLayer.getChildren().add(text);
-            y += 18;
-        }
     }
 
     public void clearStrategyOverlay() {
@@ -429,6 +427,34 @@ public class BoardView {
 
     public Pane getRoot() {
         return root;
+    }
+
+    private void layoutBoard() {
+        if (contentWidth <= 0 || contentHeight <= 0) {
+            return;
+        }
+
+        double availableWidth = root.getWidth();
+        double availableHeight = root.getHeight();
+
+        if (availableWidth <= 0 || availableHeight <= 0) {
+            return;
+        }
+
+        double scale = Math.min(availableWidth / contentWidth, availableHeight / contentHeight);
+        if (Double.isNaN(scale) || Double.isInfinite(scale)) {
+            scale = 1.0;
+        }
+
+        contentScale.setX(scale);
+        contentScale.setY(scale);
+
+        double scaledWidth = contentWidth * scale;
+        double scaledHeight = contentHeight * scale;
+        contentGroup.relocate(
+                (availableWidth - scaledWidth) / 2.0,
+                (availableHeight - scaledHeight) / 2.0
+        );
     }
 
     private void drawHeatmap(Map<String, Double> weights) {

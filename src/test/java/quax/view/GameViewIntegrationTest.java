@@ -13,8 +13,10 @@ import org.junit.jupiter.api.Test;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.Node;
+import javafx.geometry.Bounds;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -113,6 +115,37 @@ class GameViewIntegrationTest {
             int polygonCount = countAllPolygons(boardView.getRoot());
             // 11x11 octagons + 10x10 rhombs
             assertEquals(221, polygonCount);
+        });
+    }
+
+    @Test
+    void devModeButtonTogglesWithoutKeyboardShortcut() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+
+            Button hvh = findButtonByText(root, "Human vs Human");
+            assertNotNull(hvh);
+            hvh.fire();
+
+            Button enableDevMode = findButtonByText(root, "Enable Dev Mode");
+            assertNotNull(enableDevMode);
+            assertTrue(enableDevMode.isVisible());
+
+            enableDevMode.fire();
+
+            Button disableDevMode = findButtonByText(root, "Disable Dev Mode");
+            Label devModeLabel = findLabelByText(root, "DevMode: ON");
+            assertNotNull(disableDevMode);
+            assertNotNull(devModeLabel);
+            assertTrue(devModeLabel.isVisible());
+
+            disableDevMode.fire();
+
+            Button enableAgainButton = findButtonByText(root, "Enable Dev Mode");
+            Label hiddenDevModeLabel = findLabelByText(root, "DevMode: ON");
+            assertNotNull(enableAgainButton);
+            assertTrue(hiddenDevModeLabel == null || !hiddenDevModeLabel.isVisible());
         });
     }
 
@@ -390,6 +423,57 @@ class GameViewIntegrationTest {
         });
     }
 
+    @Test
+    void compactSceneKeepsBoardInsideViewportWithDevToolsVisible() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+            Scene scene = new Scene(root, 760, 560);
+
+            Button hvb = findButtonByText(root, "Human vs Bot");
+            assertNotNull(hvb);
+            hvb.fire();
+
+            Button enableDevMode = findButtonByText(root, "Enable Dev Mode");
+            assertNotNull(enableDevMode);
+            enableDevMode.fire();
+
+            Button showMoveListButton = findButtonByText(root, "Show Move List");
+            assertNotNull(showMoveListButton);
+            showMoveListButton.fire();
+
+            assertBoardFitsInsideScene(root, scene);
+        });
+    }
+
+    @Test
+    void botAnalysisNotesRenderBesideBoardInWideLayout() {
+        FxTestHelper.runOnFxThread(() -> {
+            GameView view = new GameView(new GameController());
+            Parent root = view.getRoot();
+            Scene scene = new Scene(root, 1100, 700);
+
+            Button hvb = findButtonByText(root, "Human vs Bot");
+            assertNotNull(hvb);
+            hvb.fire();
+
+            Button enableDevMode = findButtonByText(root, "Enable Dev Mode");
+            assertNotNull(enableDevMode);
+            enableDevMode.fire();
+
+            layoutScene(scene);
+
+            Node board = findFirstByStyleClass(root, "board-view");
+            Node strategyNote = findFirstByStyleClass(root, "strategy-note");
+            assertNotNull(board);
+            assertNotNull(strategyNote);
+
+            Bounds boardBounds = board.localToScene(board.getBoundsInLocal());
+            Bounds noteBounds = strategyNote.localToScene(strategyNote.getBoundsInLocal());
+            assertTrue(noteBounds.getMinX() >= boardBounds.getMaxX() - 1.0);
+        });
+    }
+
     private Label findLabelByText(Parent root, String text) {
         List<Label> labels = findAll(root, Label.class);
         for (Label label : labels) {
@@ -429,6 +513,11 @@ class GameViewIntegrationTest {
         return textAreas.isEmpty() ? null : textAreas.get(0);
     }
 
+    private Node findFirstByStyleClass(Parent root, String styleClass) {
+        List<Node> matches = findByStyleClass(root, styleClass);
+        return matches.isEmpty() ? null : matches.get(0);
+    }
+
     private int countMoveOrderLabels(Parent root) {
         int count = 0;
         for (javafx.scene.text.Text text : findAll(root, javafx.scene.text.Text.class)) {
@@ -445,9 +534,39 @@ class GameViewIntegrationTest {
         return matches;
     }
 
+    private void assertBoardFitsInsideScene(Parent root, Scene scene) {
+        layoutScene(scene);
+
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+
+        for (javafx.scene.shape.Polygon polygon : findAll(root, javafx.scene.shape.Polygon.class)) {
+            Bounds bounds = polygon.localToScene(polygon.getBoundsInLocal());
+            minX = Math.min(minX, bounds.getMinX());
+            minY = Math.min(minY, bounds.getMinY());
+            maxX = Math.max(maxX, bounds.getMaxX());
+            maxY = Math.max(maxY, bounds.getMaxY());
+        }
+
+        assertTrue(minX >= -1.0);
+        assertTrue(minY >= -1.0);
+        assertTrue(maxX <= scene.getWidth() + 1.0);
+        assertTrue(maxY <= scene.getHeight() + 1.0);
+    }
+
+    private void layoutScene(Scene scene) {
+        scene.getRoot().applyCss();
+        scene.getRoot().layout();
+    }
+
     private <T extends javafx.scene.Node> void walk(javafx.scene.Node node, Class<T> type, List<T> out) {
         if (type.isInstance(node)) {
             out.add(type.cast(node));
+        }
+        if (node instanceof ScrollPane scrollPane && scrollPane.getContent() != null) {
+            walk(scrollPane.getContent(), type, out);
         }
         if (node instanceof Parent parent) {
             for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {

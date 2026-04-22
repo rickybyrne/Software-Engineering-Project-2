@@ -1,5 +1,7 @@
 package quax.view;
 
+import java.util.List;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -7,9 +9,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -17,18 +22,30 @@ import quax.controller.GameController;
 import quax.model.GameMode;
 import quax.model.GameState;
 import quax.model.PlayerColor;
+import quax.model.StrategyOverlay;
 
 public class GameView {
+
+    private static final double NARROW_LAYOUT_BREAKPOINT = 780;
+    private static final Font STATUS_FONT = Font.font("Arial", 16);
+    private static final Font WINNER_FONT = Font.font("Arial", FontWeight.EXTRA_BOLD, 28);
 
     private final GameController controller;
     private final BoardView boardView;
 
     private final BorderPane root;
+    private final BorderPane gameArea;
+    private final StackPane boardShell;
+    private final ScrollPane sidePanelScroll;
+    private final VBox sidePanel;
+    private final VBox strategyNotesBox;
+    private final VBox strategySection;
 
     private final Label titleLabel;
     private final Label modeLabel;
     private final Label turnLabel;
     private final Label devModeLabel;
+    private final Button devModeButton;
     private final Button pieRuleButton;
     private final Button restartButton;
     private final Button moveOrderButton;
@@ -37,18 +54,24 @@ public class GameView {
     private boolean winnerShown;
     private boolean showMoveOrder;
     private boolean showMoveList;
-    private static final Font STATUS_FONT = Font.font("Arial", 16);
-    private static final Font WINNER_FONT = Font.font("Arial", FontWeight.EXTRA_BOLD, 28);
+    private boolean gameStarted;
 
     public GameView(GameController controller) {
         this.controller = controller;
         this.boardView = new BoardView();
         this.root = new BorderPane();
+        this.gameArea = new BorderPane();
+        this.boardShell = new StackPane(boardView.getRoot());
+        this.sidePanel = new VBox(10);
+        this.sidePanelScroll = new ScrollPane(sidePanel);
+        this.strategyNotesBox = new VBox(6);
+        this.strategySection = new VBox(6);
 
         this.titleLabel = new Label("Quax");
         this.modeLabel = new Label("Mode: Not selected");
         this.turnLabel = new Label("Current turn: BLACK");
         this.devModeLabel = new Label("DevMode: ON");
+        this.devModeButton = new Button("Enable Dev Mode");
         this.pieRuleButton = new Button("Activate Pie Rule (claim opening move)");
         this.restartButton = new Button("Restart Game");
         this.moveOrderButton = new Button("Show Move Order On Board");
@@ -57,6 +80,7 @@ public class GameView {
         this.winnerShown = false;
         this.showMoveOrder = false;
         this.showMoveList = false;
+        this.gameStarted = false;
 
         buildLayout();
         connectBoardClicks();
@@ -65,56 +89,76 @@ public class GameView {
 
     private void buildLayout() {
 
-        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 34));
+        titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 32));
         modeLabel.setFont(STATUS_FONT);
         turnLabel.setFont(STATUS_FONT);
         devModeLabel.setFont(STATUS_FONT);
 
-        pieRuleButton.setPrefWidth(240);
+        devModeButton.setOnAction(e -> toggleDevMode());
         pieRuleButton.setOnAction(e -> onPieRuleClicked());
-        restartButton.setPrefWidth(160);
         restartButton.setOnAction(e -> onRestartClicked());
-        moveOrderButton.setPrefWidth(160);
         moveOrderButton.setOnAction(e -> onMoveOrderClicked());
-        moveListButton.setPrefWidth(160);
         moveListButton.setOnAction(e -> onMoveListClicked());
+
+        for (Button button : List.of(devModeButton, pieRuleButton, restartButton, moveOrderButton, moveListButton)) {
+            button.setMaxWidth(Double.MAX_VALUE);
+        }
+
+        pieRuleButton.setPrefWidth(260);
         moveListArea.setEditable(false);
         moveListArea.setWrapText(true);
-        moveListArea.setPrefRowCount(14);
-        moveListArea.setPrefColumnCount(26);
+        moveListArea.setPrefRowCount(12);
+        moveListArea.setPrefColumnCount(24);
+        moveListArea.setMaxWidth(Double.MAX_VALUE);
 
-        // Hide it by default (important for the mode selection screen)
-        pieRuleButton.setVisible(false);
-        pieRuleButton.setManaged(false);
-        restartButton.setVisible(false);
-        restartButton.setManaged(false);
-        devModeLabel.setVisible(false);
-        devModeLabel.setManaged(false);
-        moveOrderButton.setVisible(false);
-        moveOrderButton.setManaged(false);
-        moveListButton.setVisible(false);
-        moveListButton.setManaged(false);
-        moveListArea.setVisible(false);
-        moveListArea.setManaged(false);
+        Label strategyTitle = new Label("Bot analysis");
+        strategyTitle.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 16));
+        strategySection.getChildren().setAll(strategyTitle, strategyNotesBox);
+        strategySection.setVisible(false);
+        strategySection.setManaged(false);
 
-        VBox topPanel = new VBox(
-                6,
-                titleLabel,
-                modeLabel,
-                turnLabel,
+        boardShell.setAlignment(Pos.CENTER);
+        boardShell.setPadding(new Insets(12, 18, 18, 18));
+        boardShell.setMinSize(0, 0);
+        boardShell.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        sidePanel.getChildren().setAll(
+                restartButton,
+                pieRuleButton,
+                devModeButton,
                 devModeLabel,
                 moveOrderButton,
                 moveListButton,
                 moveListArea,
-                restartButton,
-                pieRuleButton
+                strategySection
         );
+        sidePanel.setAlignment(Pos.TOP_LEFT);
+        sidePanel.setFillWidth(true);
+        sidePanel.setPadding(new Insets(14));
+        sidePanel.setPrefWidth(280);
+
+        sidePanelScroll.setContent(sidePanel);
+        sidePanelScroll.setFitToWidth(true);
+        sidePanelScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sidePanelScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sidePanelScroll.setPannable(true);
+        sidePanelScroll.setVisible(false);
+        sidePanelScroll.setManaged(false);
+        sidePanelScroll.setPrefWidth(280);
+        sidePanelScroll.setMinWidth(240);
+        sidePanelScroll.setMaxWidth(320);
+
+        gameArea.setCenter(boardShell);
+
+        VBox topPanel = new VBox(4, titleLabel, modeLabel, turnLabel);
         topPanel.setAlignment(Pos.CENTER);
-        topPanel.setPadding(new Insets(16));
+        topPanel.setPadding(new Insets(14, 18, 10, 18));
 
         root.setTop(topPanel);
         updateDevModeLabel();
 
+        root.widthProperty().addListener((obs, oldValue, newValue) -> updateResponsiveGameLayout());
+        root.heightProperty().addListener((obs, oldValue, newValue) -> updateResponsiveGameLayout());
         root.sceneProperty().addListener((obs, oldScene, newScene) -> installDevModeKeybind(newScene));
         if (root.getScene() != null) {
             installDevModeKeybind(root.getScene());
@@ -128,16 +172,14 @@ public class GameView {
 
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.D) {
-                controller.toggleDevMode();
-                updateDevModeLabel();
-                if (controller.getState() != null) {
-                    render(controller.getState());
-                }
+                toggleDevMode();
             }
         });
     }
 
     private void showModeSelection() {
+
+        gameStarted = false;
 
         Label prompt = new Label("Select game mode");
         prompt.setFont(Font.font("Arial", FontWeight.SEMI_BOLD, 20));
@@ -152,6 +194,7 @@ public class GameView {
 
         VBox modeSelection = new VBox(14, prompt, humanVsHumanButton, humanVsBotButton);
         modeSelection.setAlignment(Pos.CENTER);
+        modeSelection.setPadding(new Insets(24));
 
         root.setCenter(modeSelection);
     }
@@ -161,16 +204,22 @@ public class GameView {
         winnerShown = false;
         showMoveOrder = false;
         showMoveList = false;
+        gameStarted = true;
         boardView.setShowMoveOrder(false, controller.getState());
+
+        sidePanelScroll.setVisible(true);
+        sidePanelScroll.setManaged(true);
+        restartButton.setVisible(true);
+        restartButton.setManaged(true);
+        restartButton.setDisable(false);
+
         updateDevModeLabel();
-        root.setCenter(boardView.getRoot());
+        root.setCenter(gameArea);
+        updateResponsiveGameLayout();
 
         pieRuleButton.setVisible(false);
         pieRuleButton.setManaged(false);
         pieRuleButton.setDisable(true);
-        restartButton.setVisible(true);
-        restartButton.setManaged(true);
-        restartButton.setDisable(false);
 
         render(controller.getState());
     }
@@ -208,14 +257,17 @@ public class GameView {
             pieRuleButton.setManaged(false);
         }
 
+        StrategyOverlay overlay = controller.getLastBotOverlay();
         if (controller.isDevModeEnabled()) {
-            boardView.drawStrategyOverlay(controller.getLastBotOverlay());
+            boardView.drawStrategyOverlay(overlay);
+            updateStrategyNotes(overlay);
         } else {
             boardView.clearStrategyOverlay();
+            updateStrategyNotes(null);
         }
     }
 
-    private void connectBoardClicks(){
+    private void connectBoardClicks() {
         boardView.setOnOctClicked(this::onOctClicked, this::onOctRightClicked);
         boardView.setOnRhombClicked(this::onRhombClicked, this::onRhombRightClicked);
 
@@ -299,23 +351,29 @@ public class GameView {
 
     private void updateDevModeLabel() {
         boolean devModeEnabled = controller.isDevModeEnabled();
-        devModeLabel.setVisible(devModeEnabled);
-        devModeLabel.setManaged(devModeEnabled);
-        devModeLabel.setText(devModeEnabled ? "DevMode: ON" : "");
         controller.toggleStrategyOverlay(devModeEnabled);
+
+        devModeButton.setVisible(gameStarted);
+        devModeButton.setManaged(gameStarted);
+        devModeButton.setText(devModeEnabled ? "Disable Dev Mode" : "Enable Dev Mode");
+
+        devModeLabel.setVisible(gameStarted && devModeEnabled);
+        devModeLabel.setManaged(gameStarted && devModeEnabled);
+        devModeLabel.setText(devModeEnabled ? "DevMode: ON" : "");
 
         if (!devModeEnabled) {
             showMoveOrder = false;
             showMoveList = false;
             boardView.setShowMoveOrder(false, controller.getState());
+            updateStrategyNotes(null);
         }
 
-        moveOrderButton.setVisible(devModeEnabled);
-        moveOrderButton.setManaged(devModeEnabled);
-        moveListButton.setVisible(devModeEnabled);
-        moveListButton.setManaged(devModeEnabled);
-        moveListArea.setVisible(devModeEnabled && showMoveList);
-        moveListArea.setManaged(devModeEnabled && showMoveList);
+        moveOrderButton.setVisible(gameStarted && devModeEnabled);
+        moveOrderButton.setManaged(gameStarted && devModeEnabled);
+        moveListButton.setVisible(gameStarted && devModeEnabled);
+        moveListButton.setManaged(gameStarted && devModeEnabled);
+        moveListArea.setVisible(gameStarted && devModeEnabled && showMoveList);
+        moveListArea.setManaged(gameStarted && devModeEnabled && showMoveList);
         updateMoveOrderButton();
         updateMoveListButton();
         updateMoveList(controller.getState());
@@ -330,7 +388,7 @@ public class GameView {
     }
 
     private void updateMoveList(GameState state) {
-        if (!showMoveList || state == null) {
+        if (!showMoveList || state == null || !controller.isDevModeEnabled()) {
             moveListArea.clear();
             moveListArea.setVisible(false);
             moveListArea.setManaged(false);
@@ -340,6 +398,60 @@ public class GameView {
         moveListArea.setText(buildMoveList(state));
         moveListArea.setVisible(true);
         moveListArea.setManaged(true);
+    }
+
+    private void updateStrategyNotes(StrategyOverlay overlay) {
+        strategyNotesBox.getChildren().clear();
+
+        if (!controller.isDevModeEnabled() || overlay == null || overlay.getNotes() == null || overlay.getNotes().isEmpty()) {
+            strategySection.setVisible(false);
+            strategySection.setManaged(false);
+            return;
+        }
+
+        for (String note : overlay.getNotes()) {
+            Label noteLabel = new Label(note);
+            noteLabel.getStyleClass().add("strategy-note");
+            noteLabel.setWrapText(true);
+            strategyNotesBox.getChildren().add(noteLabel);
+        }
+
+        strategySection.setVisible(true);
+        strategySection.setManaged(true);
+    }
+
+    private void updateResponsiveGameLayout() {
+        if (!gameStarted) {
+            return;
+        }
+
+        if (root.getWidth() > 0 && root.getWidth() < NARROW_LAYOUT_BREAKPOINT) {
+            gameArea.setRight(null);
+            gameArea.setBottom(sidePanelScroll);
+            BorderPane.setMargin(sidePanelScroll, new Insets(0, 18, 18, 18));
+            sidePanelScroll.setMinWidth(0);
+            sidePanelScroll.setMaxWidth(Double.MAX_VALUE);
+            double controlsHeight = root.getHeight() > 0
+                    ? Math.max(170, Math.min(240, root.getHeight() * 0.30))
+                    : 200;
+            sidePanelScroll.setPrefHeight(controlsHeight);
+        } else {
+            gameArea.setBottom(null);
+            gameArea.setRight(sidePanelScroll);
+            BorderPane.setMargin(sidePanelScroll, new Insets(12, 18, 18, 0));
+            sidePanelScroll.setPrefWidth(280);
+            sidePanelScroll.setMinWidth(240);
+            sidePanelScroll.setMaxWidth(320);
+            sidePanelScroll.setPrefHeight(Region.USE_COMPUTED_SIZE);
+        }
+    }
+
+    private void toggleDevMode() {
+        controller.toggleDevMode();
+        updateDevModeLabel();
+        if (controller.getState() != null) {
+            render(controller.getState());
+        }
     }
 
     private String buildMoveList(GameState state) {
